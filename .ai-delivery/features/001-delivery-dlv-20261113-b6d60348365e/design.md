@@ -157,7 +157,7 @@ orchestrator 拥有连接级恢复，不把重建逻辑留在 route 或 SDK call
 
 启动/部署 contract check 使用仓库内批准的非敏感固定文本“`The meeting has started.`”作为唯一输入，沿用生产 system instruction、deployment、`stream:true` 与 `reasoning:{effort:"none"}`，但不把输入或输出写入日志或报告。只有 endpoint 可访问、实际 deployment 为配置的 `gpt-sol-6.1`、请求参数被接受、流中只出现允许的 text delta/completed 事件、至少一个非空 text delta 且正常 completed 时探针通过；认证/配置错误、参数拒绝、空流、error、未知事件、schema 缺字段、中途断流或超时均失败，不改用默认 reasoning、其他模型或非流式请求。探针状态只有 `pending|passed|failed`，`pending` 或 `failed` 均使应用不 ready；进程生命周期内启动时执行一次，失败保持不 ready，不由 readiness 请求重复调用模型。
 
-启动探针必须先由独立 contract test 固定上述请求和全部通过/拒绝条件，再实现探针。测试使用 scriptable Foundry port，不访问 Azure，逐项断言固定输入、deployment、stream、reasoning、允许事件、空流/error/未知或畸形事件、断流/超时，以及探针 `pending`/`failed` 时 `GET /health/ready` 返回 `503`、仅 `passed` 且未 draining 时返回 `200`。真实 integration 再对同一探针 contract 取证；本地 fake 结果不代表 deployment 已通过。
+启动探针必须先由 `tests/contract/startup-contract.test.ts` 固定上述请求和全部通过/拒绝条件，再实现探针。测试使用 scriptable Foundry port，不访问 Azure，逐项断言固定输入、deployment、stream、reasoning、允许事件、空流/error/未知或畸形事件、断流/超时，以及探针 `pending`/`failed` 时 `GET /health/ready` 返回 `503`、仅 `passed` 且未 draining 时返回 `200`。真实 integration 再对同一探针 contract 取证；本地 fake 结果不代表 deployment 已通过。
 
 ### HTTP 与 schema
 
@@ -170,7 +170,7 @@ shared protocol 以 TypeScript discriminated unions 定义，并在服务端运�
 - 浏览器到应用只允许 HTTPS/WSS；Fastify 仅信任平台终止 TLS 后提供的受控 forwarded headers。WebSocket upgrade 校验精确部署 origin，不使用通配 CORS。
 - 麦克风采集只在用户触发和活动页面会话期间进行；stop、disconnect、page unload 均停止 media tracks 与 AudioWorklet。
 - Azure 访问优先使用 Container Apps managed identity。必要 credential 由 Key Vault secret reference 注入环境变量；配置错误消息只列缺失 key 名，不打印值。
-- 禁止在源代码、fixture、snapshot、构建产物、日志、protocol event 和普通测试报告中写入真实 secret、authorization header 或任何真实会议音频、STT text、中文字幕。真实会议内容不得用作测试输入，也不得进入 trace、video、screenshot 或诊断文件。
+- 真实 secret 或 authorization header 禁止进入源代码、fixture、snapshot、构建产物、日志、protocol event、测试报告和验收 artifact。实时产品流程允许当前连接的内存 protocol event 携带中文字幕，这是批准行为；但任何真实会议音频、STT text 或中文字幕均不得持久化到日志、测试输入、trace、video、screenshot、报告、artifact 或诊断文件。
 - 仓库可提交获准的合成/非敏感固定音频 fixture 及其公开预期文本；由这些固定样本在远程 QA 中生成的字幕、trace、video 和 screenshot 仅可作为受控验收 artifact。artifact 必须标记 fixture id、场景、candidate identity 和事件顺序，不包含 credential、authorization header、provider body 或真实会议内容；普通测试报告只记录 artifact 引用、断言和状态，不复制音频或字幕正文。
 - 受控验收 artifact 只进入平台现有的访问受限 QA artifact 存储并服从其既有保留/删除策略，不上传应用存储、不复制到日志、工单或仓库，也不在本方案新增保留期限。若平台不能提供该受控边界，则该次 QA 不得使用真实会议内容替代，必须停止并保留不含内容的阻塞状态。
 - 内存中音频帧消费后立即丢弃；segment text 在终态发送或失败后解除引用；连接关闭销毁全部会话状态。不建立持久化、备份、analytics 或 transcript 下载。
@@ -191,7 +191,7 @@ shared protocol 以 TypeScript discriminated unions 定义，并在服务端运�
 
 协议帧固定为 100 ms/3,200-byte PCM，服务端不聚合无界音频。每连接最多一个 recognizer、一个活动 translation request 和 16 个待处理稳定 segment；达到边界时明确失败，禁止静默丢弃或无界积压。该上限是进程资源保护参数，不是产品吞吐承诺。Container Apps CPU、memory、replica min/max、per-replica connection target 和 WebSocket idle timeout 由目标环境容量验证及 Azure quota 配置，不能硬编码为产品目标。
 
-资源上限或队列实现变更前，`tests/contract/session-resource.contract.test.ts` 必须以 fake Speech/Foundry ports 执行可重复长会话：连续产生至少两个完整队列窗口（`2 × (16 + 1)` 个）稳定 segment，通过受控暂停 translation 分别观察 16 个 queued + 1 个 active 的允许边界和第 17 个 queued segment 触发资源保护关闭；非溢出路径逐个释放 translation，断言任一时刻只有一个 active request、sequence/final 严格递增且无丢失/重复；drain、abort 和连接级 recognizer 重建后，断言 audio frame、segment text、queue entry、callback、timer、recognizer 和 stream 的可达引用计数回到零。测试以显式生命周期计数和 fake resource registry 判定有界释放，不以易波动的进程 heap 数值制造产品阈值。该 contract 必须先失败，再由 orchestrator 实现使其通过，并成为修改 16-segment 上限的必需回归证据。
+资源上限或队列实现变更前，`tests/contract/session-resource.contract.test.ts` 必须以 fake Speech/Foundry ports 执行两个相互隔离的可重复运行。长会话运行连续完成至少两个完整队列窗口（`2 × (16 + 1)` 个）稳定 segment，逐个释放 translation，并断言任一时刻只有一个 active request、queued 不超过 16、sequence/final 严格递增且无丢失/重复。溢出运行受控暂停 active translation，先观察 16 个 queued + 1 个 active 的允许边界，再以第 17 个 queued segment 触发资源保护关闭。两个运行在 drain、abort 或连接级 recognizer 重建后，均断言 audio frame、segment text、queue entry、callback、timer、recognizer 和 stream 的可达引用计数回到零。测试以显式生命周期计数和 fake resource registry 判定有界释放，不以易波动的进程 heap 数值制造产品阈值。该 contract 必须先失败，再由 orchestrator 实现使其通过，并成为修改 16-segment 上限的必需回归证据。
 
 只在尚未发出任何 `subtitle.delta` 的 segment 上对 provider 明确标为 transient 的连接建立失败重试一次，并使用 Azure SDK/response 指示的 retry delay；缺少指示时不自动重试。已输出 delta、语言不可识别、认证/配置、contract 或 validation 错误均不重试。重试保持同一 segment id，绝不重放已交付字幕。失败 segment 进入 `failed`，后续 segment 仍可新建；连接级 SDK 取消则重建一次 recognizer，重建失败关闭该会话。这里的重试是内部恢复选择，不新增用户可见可靠性承诺。
 
