@@ -1,0 +1,26 @@
+{
+  "classification": "delivery_required",
+  "paths": [
+    ".ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md"
+  ],
+  "reason": "下一 dependency-ready Phase 4 任务 T031 明确要求提交 active Feature 的 runtime/runbook.md，且 T033 必须在该 runbook 完成后才能执行；当前 Hub path manifest 未授权该准确路径。",
+  "failureEvidence": [
+    "在 immutable base c7f52b1e3669d6235f9b88318dfa58ac2b06e3b2 上，test -e .ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md 返回 1，证明制品尚不存在。",
+    "tasks-implementation.md 的 T031 将 .ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md 指定为唯一输出路径；本 Session 的 Hub path manifest 仅授权 runtime/deployment.json 与 runtime/developer-functional-run.sh，未授权 runtime/runbook.md。",
+    "不提交该路径就无法完成 T031；T033 依赖 T031，因此也无法闭合已批准 Phase 4。"
+  ],
+  "approvedSources": [
+    "tasks-implementation.md T031、T033",
+    "design.md“Component 边界与项目结构”“部署拓扑、迁移、Rollout 与 Rollback”“支持 Runbook”",
+    "technical-baseline.md“运行与生命周期约束”"
+  ],
+  "planningChanges": [
+    "保持已批准 Design 与 Tasks 文本不变，在新的 Coding Session path manifest 中增加准确路径 .ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md。",
+    "继续按 T029/T031 → T030 → T032 → T033 的既有依赖闭合 Phase 4，不扩大产品或技术范围。"
+  ],
+  "validation": [
+    "确认新 manifest 精确授权 runtime/runbook.md，且不授权其他 Feature 或受保护路径。",
+    "按 T031 对照 design“支持 Runbook”和 technical baseline“运行与生命周期约束”检查章节内容，不新增 provider、SLO、保留策略或产品行为。",
+    "执行 T033 的最终 path、secret、会议内容、依赖安全、协议边界和 .github/workflows 未变检查。"
+  ]
+}
