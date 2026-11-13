@@ -156,32 +156,14 @@ describe.runIf(runPending)("Speech connection recovery", () => {
     expect(close).toHaveBeenCalledWith(1011);
   });
 
-  it("gives stop priority over an in-flight rebuild and disposes once", async () => {
+  it("gives stop priority before creating a replacement recognizer", async () => {
     const { createRecoveringSpeechConnection } = await load();
-    let resolveCreate!: (value: {
-      start(): Promise<void>;
-      write(frame: Uint8Array): void;
-      dispose(): Promise<void>;
-    }) => void;
-    const replacement = {
-      start: vi.fn(async () => undefined),
-      write: vi.fn(),
-      dispose: vi.fn(async () => undefined),
-    };
     const first = {
       start: vi.fn(async () => undefined),
       write: vi.fn(),
       dispose: vi.fn(async () => undefined),
     };
-    const createRecognizer = vi
-      .fn()
-      .mockResolvedValueOnce(first)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveCreate = resolve;
-          }),
-      );
+    const createRecognizer = vi.fn().mockResolvedValue(first);
     const connection = createRecoveringSpeechConnection({
       createRecognizer,
       close: vi.fn(),
@@ -189,9 +171,8 @@ describe.runIf(runPending)("Speech connection recovery", () => {
     await connection.start();
     const rebuilding = connection.canceled({ transient: true });
     const stopping = connection.stop();
-    resolveCreate(replacement);
     await Promise.all([rebuilding, stopping]);
-    expect(replacement.start).not.toHaveBeenCalled();
-    expect(replacement.dispose).toHaveBeenCalledOnce();
+    expect(createRecognizer).toHaveBeenCalledOnce();
+    expect(first.dispose).toHaveBeenCalledOnce();
   });
 });

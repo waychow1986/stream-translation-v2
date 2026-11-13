@@ -158,8 +158,13 @@ export function createRecoveringSpeechConnection(options: {
         await dispose(created);
         return;
       }
-      await created.start();
-      recognizer = created;
+      try {
+        await created.start();
+        recognizer = created;
+      } catch (error) {
+        await dispose(created);
+        throw error;
+      }
     },
     write(frame: Uint8Array) {
       if (!stopped && !recovering) recognizer?.write(frame);
@@ -178,11 +183,11 @@ export function createRecoveringSpeechConnection(options: {
       recovered = true;
       const previous = recognizer;
       recognizer = undefined;
-      const disposing = dispose(previous);
-      const replacementPromise = options.createRecognizer();
+      let replacement: Recognizer | undefined;
       try {
-        await disposing;
-        const replacement = await replacementPromise;
+        await dispose(previous);
+        if (stopped) return;
+        replacement = await options.createRecognizer();
         if (stopped) {
           await dispose(replacement);
           return;
@@ -194,6 +199,7 @@ export function createRecoveringSpeechConnection(options: {
         }
         recognizer = replacement;
       } catch {
+        await dispose(replacement);
         if (!stopped) options.close(1011);
       } finally {
         recovering = false;
