@@ -27,11 +27,9 @@ export function encodePcm16Le(samples: Float32Array): Uint8Array {
   const view = new DataView(output.buffer);
   samples.forEach((sample, index) => {
     const value = Math.max(-1, Math.min(1, sample));
-    view.setInt16(
-      index * 2,
-      value < 0 ? value * 0x8000 : value * 0x7fff,
-      true,
-    );
+    const encoded =
+      value === 1 ? 0x7fff : Math.max(-0x8000, Math.round(value * 0x8000));
+    view.setInt16(index * 2, encoded, true);
   });
   return output;
 }

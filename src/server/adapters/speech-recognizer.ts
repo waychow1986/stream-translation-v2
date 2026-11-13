@@ -77,7 +77,7 @@ export function createSpeechRecognizer(options: {
       closed = true;
       if (recognizer) {
         await new Promise<void>((resolve) =>
-          recognizer!.stopContinuousRecognitionAsync(resolve, resolve),
+          recognizer!.stopContinuousRecognitionAsync(resolve, () => resolve()),
         );
         recognizer.close();
       }
@@ -141,7 +141,7 @@ export async function recognizeFixture(input: {
     };
     recognizer.startContinuousRecognitionAsync(
       () => {
-        stream.write(input.audio);
+        stream.write(input.audio.slice().buffer as ArrayBuffer);
         stream.close();
       },
       reject,

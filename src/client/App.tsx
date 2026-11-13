@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 import { createAudioCapture } from "./audio/capture.js";
 import {
@@ -46,30 +46,39 @@ export function App() {
     cleanup.current = () => client.unload();
   }
 
-  return (
-    <main>
-      <h1>会议实时中文字幕</h1>
-      <p aria-live="polite">{status}</p>
-      <button onClick={() => void start()}>开始</button>
-      <button onClick={() => cleanup.current()}>停止</button>
-      <section aria-label="中文字幕">
-        {subtitles.segments.map((segment) =>
-          segment.status === "unrecognized" ? (
-            <p key={segment.sequence} data-testid="segment-unrecognized">
-              当前发言无法识别
-            </p>
-          ) : segment.text ? (
-            <p
-              key={segment.sequence}
-              data-testid="subtitle-segment"
-              data-final={String(segment.terminal)}
-              data-source-locale={segment.sourceLocale}
-            >
-              {segment.text}
-            </p>
-          ) : null,
-        )}
-      </section>
-    </main>
+  return createElement(
+    "main",
+    null,
+    createElement("h1", null, "会议实时中文字幕"),
+    createElement("p", { "aria-live": "polite" }, status),
+    createElement("button", { onClick: () => void start() }, "开始"),
+    createElement("button", { onClick: () => cleanup.current() }, "停止"),
+    createElement(
+      "section",
+      { "aria-label": "中文字幕" },
+      subtitles.segments.map((segment) =>
+        segment.status === "unrecognized"
+          ? createElement(
+              "p",
+              {
+                key: segment.sequence,
+                "data-testid": "segment-unrecognized",
+              },
+              "当前发言无法识别",
+            )
+          : segment.text
+            ? createElement(
+                "p",
+                {
+                  key: segment.sequence,
+                  "data-testid": "subtitle-segment",
+                  "data-final": String(segment.terminal),
+                  "data-source-locale": segment.sourceLocale,
+                },
+                segment.text,
+              )
+            : null,
+      ),
+    ),
   );
 }

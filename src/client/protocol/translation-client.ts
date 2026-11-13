@@ -15,6 +15,7 @@ export function createTranslationClient(options: {
 }) {
   let sessionId: string | undefined;
   let released = false;
+  let closed = false;
   const release = () => {
     if (released) return;
     released = true;
@@ -58,7 +59,10 @@ export function createTranslationClient(options: {
     },
     unload() {
       release();
-      options.socket.close(1000);
+      if (!closed) {
+        closed = true;
+        options.socket.close(1000);
+      }
     },
   };
 }
