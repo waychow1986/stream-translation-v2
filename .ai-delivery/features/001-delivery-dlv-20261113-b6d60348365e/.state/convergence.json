@@ -1,0 +1,29 @@
+{
+  "sourceArtifacts": {
+    "reports/convergence.md": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "passed": false,
+  "blockers": [
+    {
+      "category": "contradicts",
+      "artifact": "design.md",
+      "path": "src/server/session/orchestrator.ts",
+      "description": "生产会话未接入批准的单 worker、16 queued segment 资源边界和严格顺序控制。",
+      "route": "coding-repair"
+    },
+    {
+      "category": "partial",
+      "artifact": "technical-baseline.md",
+      "path": "src/server/main.ts",
+      "description": "生产 Speech 路径未落实 continuous language identification 及批准的连接级恢复。",
+      "route": "coding-repair"
+    },
+    {
+      "category": "test-gap",
+      "artifact": "spec.md",
+      "path": "tests/e2e/iqa-003-unrecognized-recovery.spec.ts",
+      "description": "Playwright 未验证字幕与固定发言内容相符，且恢复场景通过重载拆成两个会话。",
+      "route": "coding-repair"
+    }
+  ]
+}
