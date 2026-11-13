@@ -318,3 +318,71 @@
 ### 实施结论
 
 阻塞。已提交准确的 `delivery_required` 范围申请；本 Session 未完成任何 T### 任务，也未声称 Phase 4、远程验证或 Delivery 完成。
+
+## Coding Session coding-attempt-01-batch-06-operation-020
+
+### 实施范围
+
+本 Session 按依赖顺序完成 Phase 4 的 `T029`～`T033`。新增 Node.js 24 LTS slim 多阶段 production container、active Feature 部署契约、部署后 developer functional test 脚本和批准范围内的运维 runbook；随后完成锁定依赖、静态分析、production build、developer tests、无凭据 integration/functional 入口检查、container build、依赖安全及最终路径/secret/会议内容/workflow 检查。未部署、审批或合并。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `Dockerfile` | 添加 Node.js 24 slim 多阶段构建、锁定依赖恢复、仅 production dependencies 与构建产物、非 root `node` 用户及 production 启动命令 | T029 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/deployment.json` | 声明 container port、readiness、Candidate identity、幂等 setup 和五类非空 validation 命令 | T030 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/developer-functional-run.sh` | 添加部署后环境输入校验、Playwright IQA-001～IQA-003 执行和规范 JSON 结果输出 | T030 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` | 记录配置/身份边界、发布与 drain/rollback、连接/乱序/限额诊断及无内容证据边界 | T031 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/tasks-implementation.md` | 仅将已有 `T029`～`T033` checkbox 更新为完成 | T029～T033 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session Coding 证据 | T029～T033 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| TD-008 / production candidate | `Dockerfile`、`runtime/deployment.json` | 本地 Docker build、image user/文件清单检查 | 通过；runtime user 为 `node`，应用源目录、测试和 Delivery 制品未复制进 image |
+| IQA-001～IQA-003 / AC-001～AC-004 | 既有完整应用及 `runtime/developer-functional-run.sh` | `tests/e2e/*.spec.ts` | Playwright 发现 3 项场景；本地无 deployed Candidate/Azure identity，场景明确 skip，远程结果未声称通过 |
+| design“支持 Runbook” | `runtime/runbook.md` | 内容边界检查 | 覆盖批准的 endpoint、identity/secret reference、候选语言、诊断、drain、rollback 和首次部署停止行为，未新增 provider、SLO 或保留策略 |
+| Constitution 三、TD-010、TD-012 | `Dockerfile`、`src/`、`tests/`、active Feature `runtime/` | dependency、secret、会议内容、path 与 workflow 扫描 | 通过；未发现 credential-like 新增或内容持久化指示，`.github/workflows/` 无变更 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `docker manifest inspect node:24-bookworm-slim` | Coding workspace | 通过 | Node.js 24 slim base image 可用 |
+| `bash -n runtime/developer-functional-run.sh` 与 `deployment.json` schema/category 定向检查 | Coding workspace | 通过 | 脚本语法有效；必选/可选分类均为唯一非空命令数组，route 与应用一致 |
+| `docker build --tag stream-translation-v2:coding-t029 .` | 本地 container runtime | 通过 | production image 构建成功 |
+| 初次广义 image 文件检查 | 本地 container runtime | 检查器误报后纠正 | 广义 `/src/` pattern 命中 production dependency 和 `dist/server/src/` 编译输出；未代表 container build 失败 |
+| 定向 image user/文件清单检查 | 本地 container runtime | 通过 | `user=node`、`workdir=/app`；存在 server/static 构建产物，不存在 `/app/src`、`/app/tests` 或 `/app/.ai-delivery` |
+| 使用无效本地 URL 执行 `runtime/developer-functional-run.sh` 的失败契约 | Coding workspace、无远程 Candidate | 预期失败 | 脚本非零退出并写入 `passed:false`、3 个失败 scenario 的有效 JSON；未声称远程功能通过 |
+| `npm exec --yes --package=node@24 -- node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci` | Node.js 24、clean `node_modules` | 通过 | 安装 186 packages；audit 187 packages，0 vulnerabilities |
+| `npm ... run format:check` | Node.js 24 | 通过 | `git diff --check` 退出码 0 |
+| `npm ... run static:check` | Node.js 24 | 通过 | TypeScript static analysis 退出码 0 |
+| `npm ... run build` | Node.js 24 | 通过 | Vite 转换 85 modules；client 与 server production build 成功 |
+| `npm ... run test:developer` | Node.js 24 | 通过 | 12 files、61 tests 全部通过 |
+| `npm ... run test:integration` | Node.js 24、无 Azure identity/credential | 通过（远程输入边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| `npm ... run test:functional` | Node.js 24、无 deployed Candidate URL | 通过（远程输入边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称完整用户流程通过 |
+| `npm ... audit --audit-level=high` | Node.js 24 | 通过 | `found 0 vulnerabilities` |
+| `docker build --tag stream-translation-v2:coding-t032 .` | 本地 container runtime | 通过 | image `sha256:a40b691d86a80dfa26ee3efe22b4454e28f8ab033b96415839e52f9de8f72cda` |
+| immutable base `bec86a823582e587254eddabdf4895553ab87b15` path/workflow/secret/content 检查 | Coding workspace | 通过 | 当时 diff 仅含 4 个批准 Candidate 文件；无 workflow 变更、credential-like 新增或会议内容持久化指示 |
+
+### Runtime 与下游门禁就绪制品
+
+已提供 production `Dockerfile`、`runtime/deployment.json`、`runtime/developer-functional-run.sh`、`runtime/runbook.md`、既有 `/health/ready` 和 `/candidate-identity`。部署契约按顺序声明 clean-runner setup、static analysis、build/container build、developer tests、真实 Azure integration 和 Playwright functional 入口；部署后脚本校验 Delivery ID、Candidate SHA、base URL 和结果路径，并为三个 IQA 场景生成平台约定 JSON。
+
+### 延后平台证据
+
+- 真实 Azure Speech continuous-LID、两种可识别语言、不可识别后恢复、`gpt-sol-6.1` 和 `reasoning.effort="none"` 结果等待批准的远程 integration identity、endpoint 和配置。
+- Playwright `IQA-001`～`IQA-003` 的真实字幕及受控 trace/video/screenshot 等待同一不可变 Candidate 的部署 URL、Delivery ID 和 Candidate SHA。
+- image publication/digest、远程部署、QA target、Independent QA、UAT、发布审批、Review 与 Merge 均属于后续平台阶段；本 Session 未制造对应结果。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 integration 与 functional 命令只证明编译、发现、输入边界和可执行入口；3 项 Azure integration 与 3 项 Playwright 场景因缺少批准平台输入保持 skip，不构成真实功能通过。
+- 本地 Docker build 的 image digest 只属于 Coding workspace，不是平台发布的 Candidate digest。
+- 既有 `reports/coding-scope-request.json` 是上一 Session 的不可变范围申请记录；本 Session manifest 已准确授权 `runtime/runbook.md`，因此该历史阻塞不再阻止本批次实施。
+- 未发现当前 Coding 阻塞项；全部 33 项规划任务现已具有实现和本地阶段证据。
+
+### 实施结论
+
+完成本批次 `T029`～`T033`、Phase 4 Candidate 制品及 mandatory local validation。真实 Azure integration、部署后 Playwright、Candidate publication 和后续审批仍为明确延后平台证据；本结论不表示这些远程或下游门禁已通过。
