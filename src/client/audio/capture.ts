@@ -53,6 +53,33 @@ export function framePcm(
   return frames;
 }
 
+export function createPcmFrameAccumulator(
+  onFrame: (frame: Uint8Array) => void,
+): {
+  push(bytes: Uint8Array): void;
+  flush(): void;
+} {
+  let pending = new Uint8Array();
+  let flushed = false;
+  return {
+    push(bytes) {
+      if (flushed || bytes.byteLength === 0) return;
+      const combined = new Uint8Array(pending.byteLength + bytes.byteLength);
+      combined.set(pending);
+      combined.set(bytes, pending.byteLength);
+      const frames = framePcm(combined);
+      for (const frame of frames) onFrame(frame);
+      pending = combined.slice(frames.length * AUDIO_FRAME_BYTES);
+    },
+    flush() {
+      if (flushed) return;
+      flushed = true;
+      if (pending.byteLength > 0) onFrame(pending);
+      pending = new Uint8Array();
+    },
+  };
+}
+
 export async function createAudioCapture(
   onFrame: (frame: Uint8Array) => void,
 ): Promise<{ stop(): Promise<void> }> {
@@ -63,12 +90,11 @@ export async function createAudioCapture(
   );
   const source = context.createMediaStreamSource(stream);
   const worklet = new AudioWorkletNode(context, "pcm-capture");
+  const accumulator = createPcmFrameAccumulator(onFrame);
   worklet.port.onmessage = ({ data }: MessageEvent<Float32Array>) => {
-    for (const frame of framePcm(
+    accumulator.push(
       encodePcm16Le(resampleTo16Khz(data, context.sampleRate)),
-    )) {
-      onFrame(frame);
-    }
+    );
   };
   source.connect(worklet);
   worklet.connect(context.destination);
@@ -78,6 +104,8 @@ export async function createAudioCapture(
       if (stopped) return;
       stopped = true;
       stream.getTracks().forEach((track) => track.stop());
+      worklet.port.onmessage = null;
+      accumulator.flush();
       worklet.disconnect();
       source.disconnect();
       await context.close();

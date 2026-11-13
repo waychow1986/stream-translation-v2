@@ -46,6 +46,23 @@ export function releaseConnection(resources: Array<{ dispose(): void }>) {
   }
 }
 
+export async function startGatewaySession(options: {
+  start(): Promise<{ sessionId: string }>;
+  sendReady(sessionId: string): void;
+  close(code: number): void;
+  dispose(): void;
+}): Promise<boolean> {
+  try {
+    const { sessionId } = await options.start();
+    options.sendReady(sessionId);
+    return true;
+  } catch {
+    options.close(1011);
+    options.dispose();
+    return false;
+  }
+}
+
 export function registerTranslationWebsocket(
   app: FastifyInstance,
   options: {
@@ -78,10 +95,22 @@ export function registerTranslationWebsocket(
       }
       let state: "connecting" | "listening" | "draining" | "closed" =
         "connecting";
+      let closed = false;
+      let disposed = false;
+      const close = (code: number) => {
+        if (closed) return;
+        closed = true;
+        socket.close(code);
+      };
       const session = options.createSession(
         (event) => socket.send(JSON.stringify(event)),
-        (code) => socket.close(code),
+        close,
       );
+      const dispose = () => {
+        if (disposed) return;
+        disposed = true;
+        session.dispose();
+      };
       socket.on("message", async (raw: Buffer, binary: boolean) => {
         const data = binary
           ? new Uint8Array(raw)
@@ -94,8 +123,8 @@ export function registerTranslationWebsocket(
             })();
         const validation = validateInbound({ state, data, binary });
         if (!validation.accepted) {
-          socket.close(validation.closeCode);
-          session.dispose();
+          close(validation.closeCode ?? 1002);
+          dispose();
           state = "closed";
           return;
         }
@@ -105,15 +134,21 @@ export function registerTranslationWebsocket(
           (data as { type?: string }).type === "session.start" &&
           state === "connecting"
         ) {
-          const { sessionId } = await session.start();
-          state = "listening";
-          socket.send(
-            JSON.stringify({
-              type: "session.ready",
-              protocolVersion: 1,
-              sessionId,
-            }),
-          );
+          const started = await startGatewaySession({
+            start: session.start,
+            close,
+            dispose,
+            sendReady(sessionId) {
+              socket.send(
+                JSON.stringify({
+                  type: "session.ready",
+                  protocolVersion: 1,
+                  sessionId,
+                }),
+              );
+            },
+          });
+          state = started ? "listening" : "closed";
         } else if ((data as { type?: string }).type === "session.stop") {
           state = "draining";
           await session.stop();
@@ -122,8 +157,9 @@ export function registerTranslationWebsocket(
         }
       });
       socket.on("close", () => {
+        closed = true;
         state = "closed";
-        session.dispose();
+        dispose();
       });
     },
   );

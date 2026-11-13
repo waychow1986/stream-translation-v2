@@ -16,6 +16,12 @@ type GatewayModule = {
     binary: boolean;
   }): { accepted: boolean; closeCode?: number };
   releaseConnection(resources: Array<{ dispose(): void }>): void;
+  startGatewaySession(options: {
+    start(): Promise<{ sessionId: string }>;
+    sendReady(sessionId: string): void;
+    close(code: number): void;
+    dispose(): void;
+  }): Promise<boolean>;
 };
 
 const moduleUrl = new URL(
@@ -90,5 +96,26 @@ describe.runIf(runPending)("Fastify translation gateway boundaries", () => {
     expect(resources.every(({ dispose }) => dispose.mock.calls.length === 1)).toBe(
       true,
     );
+  });
+
+  it("closes and releases without sending ready when session startup fails", async () => {
+    const { startGatewaySession } = await load();
+    const sendReady = vi.fn();
+    const close = vi.fn();
+    const dispose = vi.fn();
+
+    await expect(
+      startGatewaySession({
+        start: vi.fn().mockRejectedValue(new Error("Speech unavailable")),
+        sendReady,
+        close,
+        dispose,
+      }),
+    ).resolves.toBe(false);
+
+    expect(sendReady).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith(1011);
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });

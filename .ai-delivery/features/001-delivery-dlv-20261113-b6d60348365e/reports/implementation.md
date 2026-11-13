@@ -455,3 +455,67 @@
 ### 实施结论
 
 完成本 Session 的 `CVG-001`～`CVG-003` 定向 Coding repair 及本地 deterministic validation。真实 Azure integration、部署后 Playwright 和后续平台门禁仍为明确延后证据；本结论不表示这些远程或下游门禁已通过。
+
+## Coding Session coding-attempt-03-batch-07-operation-024
+
+### 实施范围
+
+本 Session 以 `coding-repair` 模式定向修复 Convergence 的 `CVG-004`、`CVG-005`。浏览器生产采集路径现跨 AudioWorklet 小回调累计 PCM，每满 3,200 bytes 发送一帧，并在停止时仅刷新一次非空短尾；Speech recognizer 首次创建或启动失败现以 `1011` 关闭连接、执行幂等清理且不发送 `session.ready`。遵循测试先行；未修改 `tasks-implementation.md`、批准产品行为、技术决策、runtime 契约或平台 workflow，未部署、审批或合并。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/unit/audio-capture.test.ts` | 添加跨多个小回调累计、完整字节顺序、满帧边界及停止短尾仅刷新一次的 focused test | T006、T017 |
+| `src/client/audio/capture.ts` | 添加生产 PCM accumulator，并接入 AudioWorklet 回调与幂等停止刷新 | T017 |
+| `tests/contract/speech-recovery.contract.test.ts` | 分别覆盖首次 recognizer 创建失败和启动失败的 `1011` 关闭与幂等释放 | T011、T024 |
+| `tests/unit/server-gateway.test.ts` | 覆盖启动失败不发送 `session.ready`、以 `1011` 关闭并释放会话 | T014、T026 |
+| `src/server/session/orchestrator.ts` | 首次创建或启动失败时停止连接、释放已创建 recognizer、关闭 `1011` 并向 route 传播失败 | T011、T024 |
+| `src/server/routes/translation-websocket.ts` | 捕获异步 session 启动失败，幂等关闭和释放，禁止失败后进入 listening 或发送 ready | T024、T026 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session 的真实修复与验证证据 | T006、T011、T014、T017、T024、T026 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-001、FR-003、IQA-001～IQA-003、TD-003 / CVG-004 | `src/client/audio/capture.ts` | `tests/unit/audio-capture.test.ts` | 通过；6,450 bytes 经多个 86-byte 小回调形成两个 3,200-byte 帧和一个 50-byte 停止短尾，拼接结果与输入逐字节一致，重复 flush 不重复发送 |
+| TD-005、Speech adapter contract / CVG-005 | `src/server/session/orchestrator.ts`、`src/server/routes/translation-websocket.ts` | `tests/contract/speech-recovery.contract.test.ts`、`tests/unit/server-gateway.test.ts` | 通过；首次创建和启动失败均关闭 `1011`，已创建资源仅释放一次；gateway 不发送 ready，并只执行一次会话释放 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 初次 Node.js 24 focused test | 依赖尚未恢复 | 预期失败 | `vitest: not found`，随后按部署契约执行锁定依赖恢复 |
+| Node.js 24 `npm ci` | clean dependency restore | 通过 | 安装 186 packages，audit 187 packages，0 vulnerabilities |
+| `AIDELIVERY_RUN_PENDING_TESTS=1 ... vitest run tests/unit/audio-capture.test.ts tests/contract/speech-recovery.contract.test.ts tests/unit/server-gateway.test.ts`（实现前） | Node.js 24 | 预期失败 | 3 files 中 4 项新增测试失败：accumulator 与 gateway helper 尚不存在，首次 Speech 创建/启动失败未关闭 |
+| 同一 focused test（实现后） | Node.js 24 | 通过 | 3 files、14 tests 全部通过 |
+| Node.js 24 `npm run format:check` | Coding workspace | 通过 | `git diff --check` 退出码 0 |
+| Node.js 24 `npm run static:check` | Coding workspace | 通过 | TypeScript static analysis 退出码 0 |
+| Node.js 24 `npm run build` | Coding workspace | 通过 | Vite 转换 85 modules，client/server production build 成功 |
+| `docker build --tag stream-translation-v2:coding-repair-024 .` | 本地 container runtime | 通过 | production image `sha256:05829bc8b4220f2abfc59a0f67c6fe8f8b39985d91392627bf9a34ee37e85644` |
+| Node.js 24 `npm run test:developer` | Coding workspace | 通过 | 12 files、68 tests 全部通过 |
+| Node.js 24 `npm run test:integration` | 无批准 Azure identity/endpoint | 通过（环境边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| Node.js 24 `npm run test:functional` | 无 deployed Candidate URL | 通过（环境边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称完整用户流程通过 |
+| Node.js 24 `npm audit --audit-level=high` | Coding workspace | 通过 | `found 0 vulnerabilities` |
+
+### Runtime 与下游门禁就绪制品
+
+既有 `Dockerfile`、`runtime/deployment.json`、`runtime/developer-functional-run.sh`、`runtime/runbook.md`、`/health/ready` 和 `/candidate-identity` 保持不变。生产浏览器输入现可持续形成批准的 PCM 帧，Speech 首次启动失败具有确定的 `1011` 终态；现有部署后脚本仍执行同一 Candidate 的 3 项 Playwright IQA 场景。
+
+### 延后平台证据
+
+- 真实浏览器麦克风、Azure Speech continuous-LID、provider 连接失败映射、Foundry 翻译及 identity 结果等待批准的远程 integration 环境。
+- Playwright `IQA-001`～`IQA-003` 的真实字幕、trace/video/screenshot 等待同一不可变 Candidate 的部署 URL、Delivery ID 和 Candidate SHA。
+- image publication/digest、远程部署、Independent QA、UAT、发布审批、Review 与 Merge 仍属于后续平台阶段；本 Session 未制造对应结果。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 developer tests 确定性证明 PCM 累计/短尾与首次 Speech 启动失败终态，不替代真实浏览器和 Azure 服务行为。
+- 本地 integration 与 functional 命令因缺少批准平台输入保持明确 skip，只证明编译、发现和可执行入口。
+- 本地 image digest 不是平台发布的 Candidate digest。
+- Convergence LOW 警告（`IQA-003` 尚未断言预期 `candidateSha`）不属于本次两个 HIGH 阻塞项，保持为剩余风险，未擅自扩大修复范围。
+- 未发现当前 Coding repair 阻塞项；`tasks-implementation.md` 的既有内容和 checkbox 全部保持不变。
+
+### 实施结论
+
+完成本 Session 的 `CVG-004`、`CVG-005` 定向 Coding repair 及本地 deterministic validation。真实 Azure integration、部署后 Playwright 和后续平台门禁仍为明确延后证据；本结论不表示这些远程或下游门禁已通过。
