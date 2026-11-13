@@ -11,7 +11,7 @@
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "test": "npm run test:developer",
-    "test:developer": "vitest run tests/unit tests/contract --passWithNoTests",
+    "test:developer": "AIDELIVERY_RUN_PENDING_TESTS=1 vitest run tests/unit tests/contract --passWithNoTests",
     "test:integration": "vitest run tests/integration --passWithNoTests",
     "test:functional": "playwright test --pass-with-no-tests"
   },
