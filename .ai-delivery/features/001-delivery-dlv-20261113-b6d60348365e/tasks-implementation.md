@@ -16,8 +16,8 @@
 
 ## Phase 1：Setup
 
-- [ ] T001 [P] 创建 Node.js 24 LTS、TypeScript 5.x、React 19、Vite、Fastify 5、Vitest 与 Playwright 的锁定 npm 工程；在 `package.json` 一次性声明 `react`、`react-dom`、`fastify`、`@fastify/static`、`@fastify/websocket`、`microsoft-cognitiveservices-speech-sdk`、`openai`、`@azure/identity`、`ajv` 及批准的 TypeScript/Vite/Vitest/Playwright/React/Node 开发依赖，生成完整 `package-lock.json`，配置 client/server 构建入口和 static analysis、build、developer test、integration test、functional test 脚本；以 clean checkout 执行 `npm ci` 不改写 manifest/lockfile、配置可加载且各分类脚本可启动至既定环境边界作为完成证据（`package.json`、`package-lock.json`、`index.html`、`tsconfig.json`、`tsconfig.client.json`、`tsconfig.server.json`、`vite.config.ts`、`vitest.config.ts`、`playwright.config.ts`；来源：TD-001、TD-002、TD-009、TD-011，design“Technical Context”“Component 边界与项目结构”“验证环境责任矩阵”；依赖：无）
-- [ ] T002 [P] 创建批准的 Git 与容器构建忽略规则，排除依赖、构建/覆盖率/Playwright 结果、本地环境值、临时音频、Git 元数据和 Delivery 制品，同时保留锁文件；以 ignore 规则检查且无 secret 或运行产物被纳入候选上下文作为完成证据（`.gitignore`、`.dockerignore`；来源：TD-007，design“Component 边界与项目结构”；依赖：无）
+- [x] T001 [P] 创建 Node.js 24 LTS、TypeScript 5.x、React 19、Vite、Fastify 5、Vitest 与 Playwright 的锁定 npm 工程；在 `package.json` 一次性声明 `react`、`react-dom`、`fastify`、`@fastify/static`、`@fastify/websocket`、`microsoft-cognitiveservices-speech-sdk`、`openai`、`@azure/identity`、`ajv` 及批准的 TypeScript/Vite/Vitest/Playwright/React/Node 开发依赖，生成完整 `package-lock.json`，配置 client/server 构建入口和 static analysis、build、developer test、integration test、functional test 脚本；以 clean checkout 执行 `npm ci` 不改写 manifest/lockfile、配置可加载且各分类脚本可启动至既定环境边界作为完成证据（`package.json`、`package-lock.json`、`index.html`、`tsconfig.json`、`tsconfig.client.json`、`tsconfig.server.json`、`vite.config.ts`、`vitest.config.ts`、`playwright.config.ts`；来源：TD-001、TD-002、TD-009、TD-011，design“Technical Context”“Component 边界与项目结构”“验证环境责任矩阵”；依赖：无）
+- [x] T002 [P] 创建批准的 Git 与容器构建忽略规则，排除依赖、构建/覆盖率/Playwright 结果、本地环境值、临时音频、Git 元数据和 Delivery 制品，同时保留锁文件；以 ignore 规则检查且无 secret 或运行产物被纳入候选上下文作为完成证据（`.gitignore`、`.dockerignore`；来源：TD-007，design“Component 边界与项目结构”；依赖：无）
 
 ## Phase 2：Foundational
 
