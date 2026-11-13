@@ -130,6 +130,40 @@ describe.runIf(runPending)("Speech connection recovery", () => {
     expect(recognizers[0]?.dispose).toHaveBeenCalledOnce();
   });
 
+  it("closes when the initial recognizer cannot be created", async () => {
+    const { createRecoveringSpeechConnection } = await load();
+    const close = vi.fn();
+    const connection = createRecoveringSpeechConnection({
+      createRecognizer: vi.fn().mockRejectedValue(new Error("create failed")),
+      close,
+    });
+
+    await expect(connection.start()).rejects.toThrow("create failed");
+    expect(close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith(1011);
+    await connection.stop();
+  });
+
+  it("closes and disposes once when the initial recognizer cannot start", async () => {
+    const { createRecoveringSpeechConnection } = await load();
+    const close = vi.fn();
+    const recognizer = {
+      start: vi.fn().mockRejectedValue(new Error("start failed")),
+      write: vi.fn(),
+      dispose: vi.fn(async () => undefined),
+    };
+    const connection = createRecoveringSpeechConnection({
+      createRecognizer: vi.fn().mockResolvedValue(recognizer),
+      close,
+    });
+
+    await expect(connection.start()).rejects.toThrow("start failed");
+    expect(close).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith(1011);
+    await connection.stop();
+    expect(recognizer.dispose).toHaveBeenCalledOnce();
+  });
+
   it("closes on a second cancellation or non-transient cancellation", async () => {
     const { createRecoveringSpeechConnection } = await load();
     const close = vi.fn();

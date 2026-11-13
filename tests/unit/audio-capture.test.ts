@@ -7,6 +7,12 @@ type AudioModule = {
   resampleTo16Khz(samples: Float32Array, sampleRate: number): Float32Array;
   encodePcm16Le(samples: Float32Array): Uint8Array;
   framePcm(bytes: Uint8Array, stopping?: boolean): Uint8Array[];
+  createPcmFrameAccumulator(
+    onFrame: (frame: Uint8Array) => void,
+  ): {
+    push(bytes: Uint8Array): void;
+    flush(): void;
+  };
 };
 
 const moduleUrl = new URL("../../src/client/audio/capture.js", import.meta.url);
@@ -46,6 +52,25 @@ describe.runIf(runPending)("browser audio capture", () => {
     );
     expect(framePcm(bytes, true).map((frame) => frame.byteLength)).toEqual([
       3_200, 3_200, 100,
+    ]);
+  });
+
+  it("accumulates small worklet callbacks without loss and flushes one tail", async () => {
+    const { createPcmFrameAccumulator } = await load();
+    const frames: Uint8Array[] = [];
+    const accumulator = createPcmFrameAccumulator((frame) => frames.push(frame));
+    const input = Uint8Array.from({ length: 6_450 }, (_, index) => index % 251);
+
+    for (let offset = 0; offset < input.length; offset += 86) {
+      accumulator.push(input.slice(offset, offset + 86));
+    }
+    expect(frames.map((frame) => frame.byteLength)).toEqual([3_200, 3_200]);
+
+    accumulator.flush();
+    accumulator.flush();
+    expect(frames.map((frame) => frame.byteLength)).toEqual([3_200, 3_200, 50]);
+    expect([...Uint8Array.from(frames.flatMap((frame) => [...frame]))]).toEqual([
+      ...input,
     ]);
   });
 });
