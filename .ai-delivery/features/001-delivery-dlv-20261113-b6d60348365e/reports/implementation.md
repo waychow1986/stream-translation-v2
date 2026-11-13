@@ -261,3 +261,60 @@
 ### 实施结论
 
 完成本批次 `T017`～`T028` 的生产实现、focused developer tests、static analysis、production build 和本地可执行边界验证；真实 Azure integration 与 IQA 场景保持为延后平台证据。本结论不表示 Phase 4、远程验收或整个 Delivery 已完成。
+
+## Coding Session coding-attempt-01-batch-05-operation-019
+
+### 实施范围
+
+本 Session 读取并检查下一 dependency-ready Phase 4 任务。`T029` 与 `T031` 已满足任务依赖，但 `T031` 唯一要求的 `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` 不在本 Session 的 Hub path manifest 中。该制品是已批准 Delivery 的必需输出，且 `T033` 直接依赖 `T031`；因此按 Coding path contract 提交 `delivery_required` 范围申请并停止，未实施 `T029`、未修改任何任务 checkbox，也未自授权创建 runbook。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/coding-scope-request.json` | 记录 `runtime/runbook.md` 的准确缺失授权、可重复失败证据、批准来源、规划修正和验证方法 | T031、T033 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session 的范围阻塞证据，不改写既有账本前缀 | T031、T033 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| TD-008 / design“支持 Runbook” | 本 Session 未获授权创建 `runtime/runbook.md` | T031 规定的 runbook 内容检查尚未执行 | 阻塞；未声称实现或通过 |
+| IQA-001～IQA-003 | 既有应用与自动化保持不变 | 既有 integration/Playwright 入口 | 本 Session 未执行远程场景，真实平台证据继续延后 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `git rev-parse HEAD` | Coding workspace | 通过 | 输出 immutable base `c7f52b1e3669d6235f9b88318dfa58ac2b06e3b2` |
+| `test -e .ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` | Coding workspace | 预期失败 | 退出码 1，证明批准任务所需 runbook 尚不存在 |
+| Hub path manifest 与 `T031` 路径比对 | Coding workspace | 失败（范围阻塞） | manifest 未包含 `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` |
+| `npm ... run format:check && npm ... run static:check ...`（首次） | Node.js 24、依赖尚未恢复 | 失败后停止 | format 通过；static analysis 因本地缺少 `@types/node` 退出 1，后续命令未执行 |
+| `npm ... ci` | Node.js 24、clean runner 边界 | 通过 | 安装 186 packages；audit 187 packages，0 vulnerabilities |
+| `npm ... run format:check` | Node.js 24 | 通过 | `git diff --check` 退出码 0 |
+| `npm ... run static:check` | Node.js 24 | 通过 | TypeScript static analysis 退出码 0 |
+| `npm ... run build` | Node.js 24 | 通过 | Vite 转换 85 modules；client 与 server production build 退出码 0 |
+| `npm ... run test:developer` | Node.js 24 | 通过 | 12 files、61 tests 全部通过 |
+| `npm ... run test:integration` | Node.js 24、无 Azure identity/credential | 通过（环境边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| `npm ... run test:functional` | Node.js 24、无 deployed URL/candidate identity | 通过（环境边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称用户流程通过 |
+| JSON、账本前缀、最终 diff、secret 与 workflow 检查 | Coding workspace | 通过 | scope request JSON 可解析；immutable base 报告是当前账本逐字节前缀；仅 2 个批准 report 路径变更；无 credential-like 新增；`.github/workflows/` 未变 |
+
+### Runtime 与下游门禁就绪制品
+
+既有完整应用、`/health/ready`、`/candidate-identity`、Azure integration 与 Playwright 入口保持不变。本 Session 未创建 `Dockerfile`、`runtime/deployment.json`、`runtime/developer-functional-run.sh` 或 runbook；新的 Coding Session 必须先获得 `runtime/runbook.md` 的准确 path manifest 授权，再继续 Phase 4。
+
+### 延后平台证据
+
+- 真实 Azure integration、Playwright `IQA-001`～`IQA-003`、candidate image/SHA/digest、远程部署、Independent QA、UAT、发布审批、Review 与 Merge 仍属于后续平台阶段。
+- 本 Session 未制造 Azure credential、deployed URL、external identity、approved load input 或任何下游通过结论。
+
+### 限制、剩余风险与阻塞项
+
+- `runtime/runbook.md` 是 `T031` 的唯一批准输出并且是 `T033` 的直接依赖，但当前 Hub manifest 未授权该路径。
+- 按 path contract，发现 `delivery_required` 路径后不得正常完成或先实施其他 Phase 4 任务；本分支预计由 Hub 丢弃，并在范围规划批准后启动新的 Coding Session。
+- `T029`～`T033` 均保持未完成；production container、部署契约、developer functional script、本地 container 验证和最终候选检查仍待后续 Session。
+- 本地 deterministic validation 在锁定依赖恢复后通过；真实 Azure integration 与 Playwright 场景因缺少平台输入保持明确 skip，只证明 discovery、编译、输入边界和可执行入口，不构成远程通过证据。
+
+### 实施结论
+
+阻塞。已提交准确的 `delivery_required` 范围申请；本 Session 未完成任何 T### 任务，也未声称 Phase 4、远程验证或 Delivery 完成。
