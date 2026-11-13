@@ -1,6 +1,6 @@
 {
   "sourceArtifacts": {
-    "reports/convergence.md": "d4d108d146662127ee0ec4756852857a447b0e7c0aeec8f9757fd6b7f3e54dc7"
+    "reports/convergence.md": "dea835120250cf924feb8d70e3e26dbc38d5d926bb74c8f923dcea450c696955"
   },
   "passed": false,
   "blockers": [
@@ -8,7 +8,7 @@
       "category": "test-gap",
       "artifact": "design.md",
       "path": "tests/integration/azure-translation.integration.test.ts",
-      "description": "真实 Azure Speech integration 入口未配置批准的身份认证，也未显式启用 Continuous LID，无法形成 T015 要求的真实服务证据。",
+      "description": "\u771F\u5B9E Azure Speech integration \u5165\u53E3\u672A\u914D\u7F6E\u6279\u51C6\u7684\u8EAB\u4EFD\u8BA4\u8BC1\uFF0C\u4E5F\u672A\u663E\u5F0F\u542F\u7528 Continuous LID\uFF0C\u65E0\u6CD5\u5F62\u6210 T015 \u8981\u6C42\u7684\u771F\u5B9E\u670D\u52A1\u8BC1\u636E\u3002",
       "route": "coding-repair"
     }
   ]
