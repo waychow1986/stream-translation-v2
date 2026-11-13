@@ -1,6 +1,6 @@
 {
   "sourceArtifacts": {
-    "reports/convergence.md": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "reports/convergence.md": "d4ad3cb5b7a61e4837284d86567149a014c3722b4cdd8fc9b832c35e2c830b51"
   },
   "passed": false,
   "blockers": [
@@ -8,21 +8,21 @@
       "category": "contradicts",
       "artifact": "design.md",
       "path": "src/server/session/orchestrator.ts",
-      "description": "生产会话未接入批准的单 worker、16 queued segment 资源边界和严格顺序控制。",
+      "description": "\u751F\u4EA7\u4F1A\u8BDD\u672A\u63A5\u5165\u6279\u51C6\u7684\u5355 worker\u300116 queued segment \u8D44\u6E90\u8FB9\u754C\u548C\u4E25\u683C\u987A\u5E8F\u63A7\u5236\u3002",
       "route": "coding-repair"
     },
     {
       "category": "partial",
       "artifact": "technical-baseline.md",
       "path": "src/server/main.ts",
-      "description": "生产 Speech 路径未落实 continuous language identification 及批准的连接级恢复。",
+      "description": "\u751F\u4EA7 Speech \u8DEF\u5F84\u672A\u843D\u5B9E continuous language identification \u53CA\u6279\u51C6\u7684\u8FDE\u63A5\u7EA7\u6062\u590D\u3002",
       "route": "coding-repair"
     },
     {
       "category": "test-gap",
       "artifact": "spec.md",
       "path": "tests/e2e/iqa-003-unrecognized-recovery.spec.ts",
-      "description": "Playwright 未验证字幕与固定发言内容相符，且恢复场景通过重载拆成两个会话。",
+      "description": "Playwright \u672A\u9A8C\u8BC1\u5B57\u5E55\u4E0E\u56FA\u5B9A\u53D1\u8A00\u5185\u5BB9\u76F8\u7B26\uFF0C\u4E14\u6062\u590D\u573A\u666F\u901A\u8FC7\u91CD\u8F7D\u62C6\u6210\u4E24\u4E2A\u4F1A\u8BDD\u3002",
       "route": "coding-repair"
     }
   ]
