@@ -289,6 +289,15 @@
 | `git rev-parse HEAD` | Coding workspace | 通过 | 输出 immutable base `c7f52b1e3669d6235f9b88318dfa58ac2b06e3b2` |
 | `test -e .ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` | Coding workspace | 预期失败 | 退出码 1，证明批准任务所需 runbook 尚不存在 |
 | Hub path manifest 与 `T031` 路径比对 | Coding workspace | 失败（范围阻塞） | manifest 未包含 `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/runbook.md` |
+| `npm ... run format:check && npm ... run static:check ...`（首次） | Node.js 24、依赖尚未恢复 | 失败后停止 | format 通过；static analysis 因本地缺少 `@types/node` 退出 1，后续命令未执行 |
+| `npm ... ci` | Node.js 24、clean runner 边界 | 通过 | 安装 186 packages；audit 187 packages，0 vulnerabilities |
+| `npm ... run format:check` | Node.js 24 | 通过 | `git diff --check` 退出码 0 |
+| `npm ... run static:check` | Node.js 24 | 通过 | TypeScript static analysis 退出码 0 |
+| `npm ... run build` | Node.js 24 | 通过 | Vite 转换 85 modules；client 与 server production build 退出码 0 |
+| `npm ... run test:developer` | Node.js 24 | 通过 | 12 files、61 tests 全部通过 |
+| `npm ... run test:integration` | Node.js 24、无 Azure identity/credential | 通过（环境边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| `npm ... run test:functional` | Node.js 24、无 deployed URL/candidate identity | 通过（环境边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称用户流程通过 |
+| JSON、账本前缀、最终 diff、secret 与 workflow 检查 | Coding workspace | 通过 | scope request JSON 可解析；immutable base 报告是当前账本逐字节前缀；仅 2 个批准 report 路径变更；无 credential-like 新增；`.github/workflows/` 未变 |
 
 ### Runtime 与下游门禁就绪制品
 
@@ -304,6 +313,7 @@
 - `runtime/runbook.md` 是 `T031` 的唯一批准输出并且是 `T033` 的直接依赖，但当前 Hub manifest 未授权该路径。
 - 按 path contract，发现 `delivery_required` 路径后不得正常完成或先实施其他 Phase 4 任务；本分支预计由 Hub 丢弃，并在范围规划批准后启动新的 Coding Session。
 - `T029`～`T033` 均保持未完成；production container、部署契约、developer functional script、本地 container 验证和最终候选检查仍待后续 Session。
+- 本地 deterministic validation 在锁定依赖恢复后通过；真实 Azure integration 与 Playwright 场景因缺少平台输入保持明确 skip，只证明 discovery、编译、输入边界和可执行入口，不构成远程通过证据。
 
 ### 实施结论
 
