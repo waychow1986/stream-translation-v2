@@ -120,3 +120,75 @@
 ### 实施结论
 
 完成本批次 `T003`、`T004` 及 mandatory local validation；本结论仅表示 Phase 2 Foundational 完成，不表示整个 Delivery、Azure integration 或验收场景完成。
+
+## Coding Session coding-attempt-01-batch-03-operation-017
+
+### 实施范围
+
+本 Session 实施下一个 dependency-ready 阶段 Phase 3 的全部 12 项测试任务 `T005`～`T016`，未超过本次上限。先生成无敏感内容的固定音频 fixture，再编写 browser audio、client、Speech、Foundry、startup probe、恢复、orchestrator、资源、安全边界、真实 Azure integration 及 Playwright 完整流程测试。通过显式 `AIDELIVERY_RUN_PENDING_TESTS=1` 执行新增 unit/contract assertions，观察到 11 个 suite、37 项 assertion 因生产模块尚不存在而按预期进入 RED；默认本地验证仅编译、发现并跳过这些等待 `T017`～`T028` 实现的测试，未把 skip 或 fake 记为产品行为通过。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `tests/fixtures/audio/manifest.json`、`tests/fixtures/audio/*.wav` | 添加英语、法语合成固定发言和静音不可识别输入；记录 fixture id、语言用途、公开预期文本和场景 | T005 |
+| `tests/unit/audio-capture.test.ts` | 固定 16 kHz 重采样、PCM16LE 编码、3,200-byte 帧和停止短尾帧行为 | T006 |
+| `tests/unit/subtitle-reducer.test.ts`、`tests/unit/client-session.test.ts` | 固定 sequence/revision/final/gap 规则、ready 前音频边界及 stop/unload 资源释放 | T007 |
+| `tests/contract/speech-adapter.contract.test.ts` | 固定 push stream、continuous recognition/LID、候选语言、事件映射及幂等释放契约 | T008 |
+| `tests/contract/foundry-adapter.contract.test.ts` | 固定模型、简体中文 instruction、stream、关闭 reasoning、事件映射和一次瞬时重试边界 | T009 |
+| `tests/contract/startup-contract.test.ts` | 固定启动 probe 允许/拒绝流和 readiness 状态边界 | T010 |
+| `tests/contract/speech-recovery.contract.test.ts` | 固定首次 transient cancellation 重建、第二次/非 transient 关闭、无音频重放及终止竞态 | T011 |
+| `tests/unit/session-orchestrator.test.ts` | 固定 final STT、累计 revision、失败后恢复、不可识别终态与 abort 行为 | T012 |
+| `tests/contract/session-resource.contract.test.ts` | 固定 34 个 segment 长会话、单并发、16 queued 边界、溢出关闭和引用归零 | T013 |
+| `tests/unit/server-gateway.test.ts`、`tests/unit/config-and-logging.test.ts` | 固定 origin/子协议/帧/状态 allowlist、配置校验、脱敏日志和异常资源释放 | T014 |
+| `tests/integration/azure-translation.integration.test.ts` | 添加显式环境开关控制的真实 Azure 双语言、不可识别和 Foundry probe/stream 测试入口 | T015 |
+| `tests/e2e/*.spec.ts`、`tests/e2e/support/audio-input.ts` | 添加 IQA-001～IQA-003、可重复浏览器音频注入、candidate identity 断言及受控 evidence metadata/screenshot | T016 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/tasks-implementation.md` | 仅将 `T005`～`T016` checkbox 更新为完成 | T005～T016 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session Coding 证据 | T005～T016 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-003 / AC-002 | 尚待 `T017`～`T019` | `tests/unit/audio-capture.test.ts`、`tests/unit/subtitle-reducer.test.ts`、`tests/unit/client-session.test.ts` | 测试已编译和发现；强制 RED 运行因生产模块缺失失败，未声称行为通过 |
+| FR-001～FR-004 / AC-001～AC-004 | 尚待 `T020`～`T028` | `tests/contract/*.test.ts`、`tests/unit/session-orchestrator.test.ts`、`tests/unit/server-gateway.test.ts`、`tests/unit/config-and-logging.test.ts` | contract/focused assertions 已建立并获得预期 RED；fake 不代表 Azure 结果 |
+| IQA-001 | 尚待完整应用和远程 Azure | `tests/e2e/iqa-001-streaming-subtitles.spec.ts`、`tests/integration/azure-translation.integration.test.ts` | Playwright 与 integration 入口可发现；无 URL/credential 时明确 skip |
+| IQA-002 | 尚待完整应用和远程 Azure | `tests/e2e/iqa-002-second-language.spec.ts`、`tests/integration/azure-translation.integration.test.ts` | 第二种固定语言和候选范围验证入口已就绪；未执行远程结果 |
+| IQA-003 | 尚待完整应用和远程 Azure | `tests/e2e/iqa-003-unrecognized-recovery.spec.ts`、`tests/integration/azure-translation.integration.test.ts` | 不可识别后恢复的真实流程入口已就绪；未执行远程结果 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `npm exec --yes --package=node@24 -- node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci` | Node.js 24、clean `node_modules` | 通过 | 安装 186 packages；audit 187 packages，0 vulnerabilities |
+| fixture manifest 与 Python `wave` 格式检查 | Coding workspace | 通过 | 3 个 fixture 均为 PCM16LE、16 kHz、mono；manifest 含 3 项 |
+| `AIDELIVERY_RUN_PENDING_TESTS=1 ... vitest run tests/unit tests/contract --passWithNoTests` | Node.js 24、生产模块实现前 | 预期失败 | 11 files、37 tests 因 `T017`～`T028` 模块缺失失败；既有 protocol file 24 tests 通过 |
+| `npm run format:check` | Node.js 24 | 通过 | `git diff --check` 退出码 0 |
+| `npm run static:check` | Node.js 24 | 通过 | TypeScript 包括 unit/contract/integration/E2E 源码的静态分析退出码 0 |
+| `npm run build` | Node.js 24 | 通过 | Vite production client build 与 server TypeScript build 退出码 0 |
+| `npm run test:developer` | Node.js 24 | 通过（当前阶段边界） | 既有 24 tests 通过；新增 11 files、37 tests 因对应生产模块尚未实施而明确 skipped |
+| `npm run test:integration` | Node.js 24、无 Azure identity/credential | 通过（入口边界） | 1 file、3 tests 明确 skipped；未声称 Azure integration 通过 |
+| `npm run test:functional` | Node.js 24、无部署 URL/candidate identity | 通过（入口边界） | Playwright 发现 3 个 IQA 场景并明确 skipped；未声称用户流程通过 |
+| `npm audit --audit-level=high` | Node.js 24 | 通过 | `found 0 vulnerabilities` |
+| immutable base `e66cb831413e087bd402bca7e39fb76c2ecc9d20` 完整 path/secret/workflow 检查 | Coding workspace | 通过 | 最终实现改动仅在批准的 `tests/` 与 active Feature 的 Tasks/报告路径；`.github/workflows/` 无变更；仅发现测试用合成脱敏标记，无 credential |
+
+### Runtime 与下游门禁就绪制品
+
+真实 Azure integration test 已通过 `AZURE_TRANSLATION_INTEGRATION=1` 显式启用并对必需配置 key 做输入校验。Playwright 已发现 `IQA-001`～`IQA-003`，使用固定 fixture 注入浏览器音频，并准备 candidate identity、fixture id、场景和事件顺序的受控 artifact metadata。`Dockerfile`、`runtime/deployment.json`、developer functional test script 及 candidate identity endpoint 仍按任务依赖留给完整应用与 Phase 4，本 Session 未提前创建。
+
+### 延后平台证据
+
+- 真实 Azure Speech continuous-LID 候选范围、两种可识别语言、不可识别映射、provider identity、request id、`gpt-sol-6.1` 及 `reasoning.effort="none"` 结果，等待批准的远程 integration 环境。
+- Playwright `IQA-001`～`IQA-003` 的真实字幕、trace、video、screenshot 和完整用户流程结果，等待同一不可变 candidate 的远程 QA target。
+- candidate image/SHA/digest、部署、Independent QA、UAT、发布审批、Review 与 Merge 均为后续平台证据，本 Session 未制造对应结论。
+
+### 限制、剩余风险与阻塞项
+
+- 当前批次只完成测试先行阶段；新增 focused assertions 在生产模块缺失时保持 skip，强制 RED 运行已证明其不会在缺少实现时误通过。后续 `T017`～`T028` 必须逐项实现并移除对应 pending 边界，使 assertions 实际通过。
+- 合成英语/法语 fixture 的真实 Azure 可识别性只能由远程 integration 证明；Coding 仅证明文件格式、公开内容、可重复性和无凭据边界。
+- 无 Azure credential、deployed URL、外部 identity 或 approved remote target，因此真实 integration 与 E2E 均未执行；这是按批准环境责任延后的证据，不是通过或阻塞声明。
+- 未发现本批次阻塞项；下一 dependency-ready 工作从 `T017`、`T018` 开始。
+
+### 实施结论
+
+完成本批次 `T005`～`T016` 的测试先行制品、预期 RED 证据、测试发现/编译及 mandatory local validation；本结论不表示生产实现、真实 Azure integration、IQA 场景或整个 Delivery 已通过。
