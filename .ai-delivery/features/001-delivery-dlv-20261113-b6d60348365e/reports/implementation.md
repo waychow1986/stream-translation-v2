@@ -386,3 +386,72 @@
 ### 实施结论
 
 完成本批次 `T029`～`T033`、Phase 4 Candidate 制品及 mandatory local validation。真实 Azure integration、部署后 Playwright、Candidate publication 和后续审批仍为明确延后平台证据；本结论不表示这些远程或下游门禁已通过。
+
+## Coding Session coding-attempt-02-batch-07-operation-022
+
+### 实施范围
+
+本 Session 以 `coding-repair` 模式定向修复 Convergence 的 `CVG-001`～`CVG-003`：将批准的单 worker、16 个 queued segment 边界和严格顺序接入生产 orchestrator；将 continuous language identification 与首次 transient cancellation 单次重建接入生产 Speech 路径；补齐固定发言内容断言和同一会话内不可识别后恢复的 Playwright 场景。遵循测试先行，未修改 `tasks-implementation.md`、批准产品行为、技术决策、runtime 契约或平台 workflow，未部署、审批或合并。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `src/server/session/orchestrator.ts` | 生产稳定 segment 改由单 worker 串行处理，限制 16 个 queued segment；unrecognized 参与同一序列；接入一次连接重建、终止优先及幂等释放 | T011、T012、T013、T024 |
+| `src/server/adapters/speech-recognizer.ts` | 添加生产 Speech recognizer 工厂，显式设置 Continuous LID，映射 recognized/unrecognized/canceled 并幂等释放 recognizer 与 push stream | T008、T021 |
+| `src/server/main.ts` | 生产 WebSocket 会话改用已批准的恢复连接和生产 Speech adapter，并把资源保护/不可恢复关闭传入 orchestrator | T021、T024、T028 |
+| `src/server/routes/translation-websocket.ts` | 向生产 session factory 提供连接关闭端口 | T024、T026 |
+| `tests/unit/session-orchestrator.test.ts` | 添加并发稳定 segment 单 worker、严格 final 顺序及第 17 个 queued segment 资源关闭测试 | T012、T024 |
+| `tests/contract/speech-recovery.contract.test.ts` | 添加生产 Continuous LID 配置测试，并强化终止与重建竞态断言 | T008、T011、T021、T024 |
+| `tests/e2e/support/audio-input.ts` | 支持在单个浏览器媒体流中按序播放多个批准 fixture | T005、T016 |
+| `tests/fixtures/audio/manifest.json` | 为两种固定发言记录公开中文字幕核验词 | T005、T016 |
+| `tests/e2e/iqa-001-streaming-subtitles.spec.ts` | 断言中文字幕包含与固定发言相符的“会议”“开始” | T016 |
+| `tests/e2e/iqa-002-second-language.spec.ts` | 断言第二种语言的中文字幕包含与固定发言相符的“会议”“开始” | T016 |
+| `tests/e2e/iqa-003-unrecognized-recovery.spec.ts` | 移除页面重载，在同一页面、媒体流和 WebSocket 会话内依次输入不可识别与可识别 fixture，并核验恢复字幕内容 | T016 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session 的真实修复与验证证据 | T008、T011～T013、T016、T021、T024、T026、T028 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-003、FR-004、AC-002、AC-004、TD-005 / CVG-001 | `src/server/session/orchestrator.ts`、`src/server/main.ts` | `tests/unit/session-orchestrator.test.ts`、`tests/contract/session-resource.contract.test.ts` | 通过；并发稳定 segment 的 active translation 最大值为 1，final sequence 为 1、2，第 17 个 queued segment 触发 `1011` |
+| FR-001、FR-002、AC-001、AC-003、TD-004 / CVG-002 | `src/server/adapters/speech-recognizer.ts`、`src/server/session/orchestrator.ts`、`src/server/main.ts` | `tests/contract/speech-recovery.contract.test.ts`、`tests/contract/speech-adapter.contract.test.ts` | 通过；生产 adapter 显式设置 Continuous LID，首次 transient cancellation 重建一次，第二次/非 transient 关闭，stop 竞态优先且不创建替代 recognizer |
+| IQA-001、IQA-002 / CVG-003 | `tests/fixtures/audio/manifest.json` | `tests/e2e/iqa-001-streaming-subtitles.spec.ts`、`tests/e2e/iqa-002-second-language.spec.ts` | 自动化入口已补齐字幕与固定发言相符的内容断言；本地无 deployed Candidate/Azure 输入，场景明确 skip，未声称远程通过 |
+| IQA-003、AC-004 / CVG-003 | `tests/e2e/support/audio-input.ts` | `tests/e2e/iqa-003-unrecognized-recovery.spec.ts` | 自动化入口已在同一会话依次输入不可识别和可识别 fixture，断言前者无成功字幕、后者恢复并产生相符中文字幕；远程结果延后 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| 首次 `npm run test:developer -- --run ...` | 本地依赖尚未恢复 | 预期失败 | `vitest: not found`，随后按锁文件执行 `npm ci` |
+| `npm ci` | 当前 Runner Node.js 22，仅用于恢复锁定依赖 | 通过但有 engine warning | 安装 186 packages，audit 187 packages，0 vulnerabilities；正式验证改用 Node.js 24 |
+| `AIDELIVERY_RUN_PENDING_TESTS=1 npx vitest run tests/unit/session-orchestrator.test.ts tests/contract/speech-recovery.contract.test.ts`（实现前） | 本地 focused test | 预期失败 | 生产 factory 缺失、并发 active translation 为 2、资源边界测试超时，证明测试能够捕获三个生产缺口 |
+| Node.js 24 `npm run format:check` | Coding workspace | 通过 | `git diff --check` 退出码 0 |
+| Node.js 24 `npm run static:check` | Coding workspace | 通过 | TypeScript static analysis 退出码 0 |
+| Node.js 24 `npm run build` | Coding workspace | 通过 | Vite 转换 85 modules，client/server production build 成功 |
+| Node.js 24 `npm run test:developer` | Coding workspace | 通过 | 12 files、64 tests 全部通过 |
+| Node.js 24 `npm run test:integration` | 无批准 Azure identity/endpoint | 通过（环境边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| Node.js 24 `npm run test:functional` | 无 deployed Candidate URL | 通过（环境边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称完整用户流程通过 |
+| `docker build --tag stream-translation-v2:coding-repair-final .` | 本地 container runtime | 通过 | production image `sha256:09ae94457da9170b5db1024ffb0948bf861f04b3bb26188fdc3df03d7326bda4` |
+| immutable base `bbc260e958e7cfa41a65f80ca4dad62b5ae00a9c` 路径、workflow、secret pattern 与 diff 检查 | Coding workspace | 通过 | 实现与测试变更均位于批准 manifest；`.github/workflows/` 无变更；未发现 credential-like 新增 |
+
+### Runtime 与下游门禁就绪制品
+
+既有 `Dockerfile`、`runtime/deployment.json`、`runtime/developer-functional-run.sh`、`runtime/runbook.md`、`/health/ready` 和 `/candidate-identity` 保持不变。生产路径现已接入 bounded serial translation 与 Continuous LID/recovery；部署后脚本仍执行同一 Candidate 的 3 项 Playwright IQA 场景，新场景会核验固定内容和同会话恢复。
+
+### 延后平台证据
+
+- 真实 Azure Speech continuous-LID、provider cancellation 映射、两种可识别语言、不可识别后恢复、Foundry 翻译内容及 identity 结果等待批准的远程 integration 环境。
+- Playwright `IQA-001`～`IQA-003` 的真实字幕、trace/video/screenshot 等待同一不可变 Candidate 的部署 URL、Delivery ID 和 Candidate SHA。
+- image publication/digest、远程部署、Independent QA、UAT、发布审批、Review 与 Merge 仍属于后续平台阶段；本 Session 未制造对应结果。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 developer tests 使用 fake port 证明生产组装所依赖的队列、LID 配置与恢复状态机；不替代真实 Azure 服务行为。
+- 本地 integration 与 functional 命令因缺少批准平台输入保持明确 skip，只证明编译、发现和可执行入口。
+- 本地 image digest 不是平台发布的 Candidate digest。
+- 未发现当前 Coding repair 阻塞项；`tasks-implementation.md` 的既有内容和 checkbox 全部保持不变。
+
+### 实施结论
+
+完成本 Session 的 `CVG-001`～`CVG-003` 定向 Coding repair 及本地 deterministic validation。真实 Azure integration、部署后 Playwright 和后续平台门禁仍为明确延后证据；本结论不表示这些远程或下游门禁已通过。

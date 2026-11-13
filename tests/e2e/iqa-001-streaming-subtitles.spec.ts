@@ -28,7 +28,8 @@ test("IQA-001 streams Chinese subtitles without language selection", async ({
     .poll(async () => subtitle.textContent())
     .not.toBe(initial);
   await expect(subtitle).toHaveAttribute("data-final", "true");
-  await expect(subtitle).not.toBeEmpty();
+  await expect(subtitle).toContainText("会议");
+  await expect(subtitle).toContainText("开始");
   await attachControlledEvidence(page, testInfo, {
     scenario: "IQA-001",
     fixtureIds: ["recognized-language-a"],

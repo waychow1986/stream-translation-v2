@@ -9,6 +9,7 @@ import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 import { AzureOpenAI } from "openai";
 
 import { createFoundryTranslator } from "./adapters/foundry-translator.js";
+import { createProductionSpeechRecognizer } from "./adapters/speech-recognizer.js";
 import { runStartupContractProbe } from "./adapters/startup-contract.js";
 import {
   parseEnvironment,
@@ -16,7 +17,10 @@ import {
 } from "./config/environment.js";
 import { registerReadinessRoute } from "./routes/readiness.js";
 import { registerTranslationWebsocket } from "./routes/translation-websocket.js";
-import { createSessionOrchestrator } from "./session/orchestrator.js";
+import {
+  createRecoveringSpeechConnection,
+  createSessionOrchestrator,
+} from "./session/orchestrator.js";
 
 type ProbeState = {
   probe: "pending" | "passed" | "failed";
@@ -83,78 +87,55 @@ export async function buildApplication(
   registerTranslationWebsocket(app, {
     expectedOrigin: config.appOrigin,
     isDraining: () => state.draining,
-    createSession(send) {
+    createSession(send, close) {
       const sessionId = randomUUID();
-      let pushStream: SpeechSDK.PushAudioInputStream | undefined;
-      let recognizer: SpeechSDK.SpeechRecognizer | undefined;
       const orchestrator = createSessionOrchestrator({
         sessionId,
         send,
+        close,
         translate: async function* (text, signal) {
           for await (const event of translator.translate(text, signal)) {
             if (event.type === "delta") yield event.text;
           }
         },
       });
+      const connection = createRecoveringSpeechConnection({
+        close,
+        async createRecognizer() {
+          const speechConfig = await createSpeechConfig(config);
+          return createProductionSpeechRecognizer({
+            sdk: SpeechSDK,
+            speechConfig,
+            locales: config.speechLanguageCandidates,
+            callbacks: {
+              recognized(event) {
+                void orchestrator.recognized({ ...event, final: true });
+              },
+              unrecognized() {
+                void orchestrator.unrecognized();
+              },
+              canceled(event) {
+                void connection.canceled(event);
+              },
+            },
+          });
+        },
+      });
       return {
         async start() {
-          const speechConfig = await createSpeechConfig(config);
-          const autoDetect =
-            SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(
-              config.speechLanguageCandidates,
-            );
-          const format = SpeechSDK.AudioStreamFormat.getWaveFormatPCM(
-            16_000,
-            16,
-            1,
-          );
-          pushStream = SpeechSDK.AudioInputStream.createPushStream(format);
-          recognizer = SpeechSDK.SpeechRecognizer.FromConfig(
-            speechConfig,
-            autoDetect,
-            SpeechSDK.AudioConfig.fromStreamInput(pushStream),
-          );
-          recognizer.recognized = (_sender, event) => {
-            const text = event.result.text?.trim();
-            if (!text) {
-              void orchestrator.unrecognized();
-              return;
-            }
-            const locale =
-              SpeechSDK.AutoDetectSourceLanguageResult.fromResult(event.result)
-                .language;
-            void orchestrator.recognized({
-              text,
-              locale,
-              final: true,
-            });
-          };
-          await new Promise<void>((resolve, reject) =>
-            recognizer!.startContinuousRecognitionAsync(resolve, reject),
-          );
+          await connection.start();
           return { sessionId };
         },
         write(frame) {
-          pushStream?.write(frame.slice().buffer as ArrayBuffer);
+          connection.write(frame);
         },
         async stop() {
-          pushStream?.close();
-          if (recognizer) {
-            await new Promise<void>((resolve) =>
-              recognizer!.stopContinuousRecognitionAsync(resolve, () =>
-                resolve(),
-              ),
-            );
-            recognizer.close();
-          }
+          await connection.stop();
           await orchestrator.stop();
         },
         dispose() {
-          pushStream?.close();
-          recognizer?.close();
+          void connection.stop();
           orchestrator.abort();
-          pushStream = undefined;
-          recognizer = undefined;
         },
       };
     },

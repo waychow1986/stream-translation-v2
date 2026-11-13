@@ -7,6 +7,7 @@ type OrchestratorModule = {
   createSessionOrchestrator(options: {
     translate(text: string, signal: AbortSignal): AsyncIterable<string>;
     send(event: Record<string, unknown>): void;
+    close?(code: number): void;
   }): {
     recognized(event: {
       text: string;
@@ -90,6 +91,7 @@ describe.runIf(runPending)("translation session orchestrator", () => {
       locale: "en-US",
       final: true,
     });
+
     await orchestrator.recognized({
       text: "second",
       locale: "fr-FR",
@@ -101,6 +103,92 @@ describe.runIf(runPending)("translation session orchestrator", () => {
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({ type: "subtitle.final", sequence: 2 }),
     );
+  });
+
+  it("serializes concurrent stable segments in strict sequence", async () => {
+    const { createSessionOrchestrator } = await load();
+    const send = vi.fn();
+    let active = 0;
+    let maxActive = 0;
+    const releases: Array<() => void> = [];
+    const orchestrator = createSessionOrchestrator({
+      translate: async function* (text) {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise<void>((resolve) => releases.push(resolve));
+        yield text;
+        active -= 1;
+      },
+      send,
+    });
+
+    const first = orchestrator.recognized({
+      text: "first",
+      locale: "en-US",
+      final: true,
+    });
+    const second = orchestrator.recognized({
+      text: "second",
+      locale: "fr-FR",
+      final: true,
+    });
+    await Promise.resolve();
+    expect(maxActive).toBe(1);
+    expect(releases).toHaveLength(1);
+    releases.shift()?.();
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
+    releases.shift()?.();
+    await Promise.all([first, second]);
+
+    expect(maxActive).toBe(1);
+    expect(
+      send.mock.calls
+        .map(([event]) => event)
+        .filter((event) => event.type === "subtitle.final")
+        .map((event) => event.sequence),
+    ).toEqual([1, 2]);
+  });
+
+  it("closes when a seventeenth segment is queued behind active work", async () => {
+    const { createSessionOrchestrator } = await load();
+    let release!: () => void;
+    const close = vi.fn();
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const orchestrator = createSessionOrchestrator({
+      translate: async function* () {
+        await held;
+        yield "完成";
+      },
+      send: vi.fn(),
+      close,
+    });
+    const work = [
+      orchestrator.recognized({
+        text: "active",
+        locale: "en-US",
+        final: true,
+      }),
+    ];
+    await Promise.resolve();
+    for (let index = 0; index < 16; index += 1) {
+      work.push(
+        orchestrator.recognized({
+          text: `queued-${index}`,
+          locale: "en-US",
+          final: true,
+        }),
+      );
+    }
+    await orchestrator.recognized({
+      text: "overflow",
+      locale: "en-US",
+      final: true,
+    });
+    expect(close).toHaveBeenCalledWith(1011);
+    release();
+    await Promise.all(work);
   });
 
   it("emits a non-success terminal event for unrecognized speech", async () => {

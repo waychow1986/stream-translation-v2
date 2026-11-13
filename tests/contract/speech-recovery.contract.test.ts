@@ -19,6 +19,25 @@ type RecoveryModule = {
   };
 };
 
+type SpeechAdapterModule = {
+    createProductionSpeechRecognizer(options: {
+      sdk: Record<string, unknown>;
+      speechConfig: {
+        setProperty(property: unknown, value: string): void;
+      };
+      locales: string[];
+      callbacks: {
+        recognized(event: { text?: string; locale?: string }): void;
+        unrecognized(): void;
+        canceled(event: { transient: boolean }): void;
+      };
+    }): Promise<{
+      start(): Promise<void>;
+      write(frame: Uint8Array): void;
+      dispose(): Promise<void>;
+    }>;
+};
+
 const moduleUrl = new URL(
   "../../src/server/session/orchestrator.js",
   import.meta.url,
@@ -31,6 +50,58 @@ describe.runIf(runPending)("Speech connection recovery", () => {
   async function load(): Promise<RecoveryModule> {
     return (await import(moduleUrl.href)) as RecoveryModule;
   }
+
+  it("configures the production recognizer for continuous language identification", async () => {
+    const adapter = (await import(
+      "../../src/server/adapters/speech-recognizer.js"
+    )) as SpeechAdapterModule;
+    const setProperty = vi.fn();
+    const recognizer = {
+      startContinuousRecognitionAsync: vi.fn((resolve: () => void) => resolve()),
+      stopContinuousRecognitionAsync: vi.fn((resolve: () => void) => resolve()),
+      close: vi.fn(),
+    };
+    const pushStream = { write: vi.fn(), close: vi.fn() };
+    const sdk = {
+      PropertyId: { SpeechServiceConnection_LanguageIdMode: "lid-mode" },
+      AutoDetectSourceLanguageConfig: {
+        fromLanguages: vi.fn(() => "auto-detect"),
+      },
+      AudioStreamFormat: {
+        getWaveFormatPCM: vi.fn(() => "format"),
+      },
+      AudioInputStream: {
+        createPushStream: vi.fn(() => pushStream),
+      },
+      AudioConfig: {
+        fromStreamInput: vi.fn(() => "audio-config"),
+      },
+      SpeechRecognizer: {
+        FromConfig: vi.fn(() => recognizer),
+      },
+      AutoDetectSourceLanguageResult: {
+        fromResult: vi.fn(() => ({ language: "en-US" })),
+      },
+    };
+    const connection = await adapter.createProductionSpeechRecognizer({
+      sdk,
+      speechConfig: { setProperty },
+      locales: ["en-US", "fr-FR"],
+      callbacks: {
+        recognized: vi.fn(),
+        unrecognized: vi.fn(),
+        canceled: vi.fn(),
+      },
+    });
+    await connection.start();
+    expect(setProperty).toHaveBeenCalledWith("lid-mode", "Continuous");
+    expect(sdk.SpeechRecognizer.FromConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      "auto-detect",
+      "audio-config",
+    );
+    await connection.dispose();
+  });
 
   it("rebuilds once without replaying prior audio", async () => {
     const { createRecoveringSpeechConnection } = await load();
@@ -85,32 +156,14 @@ describe.runIf(runPending)("Speech connection recovery", () => {
     expect(close).toHaveBeenCalledWith(1011);
   });
 
-  it("gives stop priority over an in-flight rebuild and disposes once", async () => {
+  it("gives stop priority before creating a replacement recognizer", async () => {
     const { createRecoveringSpeechConnection } = await load();
-    let resolveCreate!: (value: {
-      start(): Promise<void>;
-      write(frame: Uint8Array): void;
-      dispose(): Promise<void>;
-    }) => void;
-    const replacement = {
-      start: vi.fn(async () => undefined),
-      write: vi.fn(),
-      dispose: vi.fn(async () => undefined),
-    };
     const first = {
       start: vi.fn(async () => undefined),
       write: vi.fn(),
       dispose: vi.fn(async () => undefined),
     };
-    const createRecognizer = vi
-      .fn()
-      .mockResolvedValueOnce(first)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveCreate = resolve;
-          }),
-      );
+    const createRecognizer = vi.fn().mockResolvedValue(first);
     const connection = createRecoveringSpeechConnection({
       createRecognizer,
       close: vi.fn(),
@@ -118,9 +171,8 @@ describe.runIf(runPending)("Speech connection recovery", () => {
     await connection.start();
     const rebuilding = connection.canceled({ transient: true });
     const stopping = connection.stop();
-    resolveCreate(replacement);
     await Promise.all([rebuilding, stopping]);
-    expect(replacement.start).not.toHaveBeenCalled();
-    expect(replacement.dispose).toHaveBeenCalledOnce();
+    expect(createRecognizer).toHaveBeenCalledOnce();
+    expect(first.dispose).toHaveBeenCalledOnce();
   });
 });
