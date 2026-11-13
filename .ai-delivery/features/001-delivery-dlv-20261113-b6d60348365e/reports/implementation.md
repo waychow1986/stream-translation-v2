@@ -192,3 +192,72 @@
 ### 实施结论
 
 完成本批次 `T005`～`T016` 的测试先行制品、预期 RED 证据、测试发现/编译及 mandatory local validation；本结论不表示生产实现、真实 Azure integration、IQA 场景或整个 Delivery 已通过。
+
+## Coding Session coding-attempt-01-batch-04-operation-018
+
+### 实施范围
+
+本 Session 按依赖顺序实施 Phase 3 的 12 项生产任务 `T017`～`T028`，达到本次任务上限。完成浏览器音频采集与协议客户端、React 中文字幕页面、配置与安全日志、Speech/Foundry adapter、启动 contract probe、会话顺序/恢复/资源边界、WebSocket/readiness route 及 Fastify 应用组装；未提前实施 Phase 4 的 container 与 runtime 制品。
+
+### 变更文件
+
+| 路径 | 变更 | 来源任务 |
+|---|---|---|
+| `src/client/audio/capture.ts`、`src/client/audio/pcm-worklet.ts` | 实现 16 kHz 重采样、PCM16LE、100 ms 帧化、AudioWorklet 与媒体释放 | T017 |
+| `src/client/protocol/translation-client.ts`、`src/client/protocol/subtitle-reducer.ts` | 实现 ready 前音频阻断、控制消息、sequence/revision/final/gap 与幂等清理 | T018 |
+| `src/client/App.tsx`、`src/client/main.tsx`、`index.html`、`tsconfig.json` | 接入 React 入口、用户触发的开始/停止、会话状态和顺序中文字幕；补齐既有 client 入口与 JSX 静态分析配置 | T019 |
+| `src/server/config/environment.ts` | 实现必需配置、HTTPS origin/endpoint、候选语言和固定 deployment 校验 | T020 |
+| `src/server/adapters/speech-recognizer.ts` | 实现 push stream、continuous recognition/LID、事件映射、幂等释放及真实 integration 入口 | T021 |
+| `src/server/adapters/foundry-translator.ts` | 实现固定模型、简体中文 instruction、关闭 reasoning、流式映射、限定重试及真实 integration 入口 | T022 |
+| `src/server/adapters/startup-contract.ts` | 实现一次性固定输入 contract probe 与 readiness 状态映射 | T023 |
+| `src/server/session/translation-session.ts`、`src/server/session/orchestrator.ts` | 实现单 worker、16 queued 边界、累计 revision、失败/不可识别恢复、Speech 单次重建及资源清理 | T024 |
+| `src/server/session/safe-logger.ts` | 实现仅允许批准元数据的结构化日志 allowlist | T025 |
+| `src/server/routes/translation-websocket.ts` | 实现精确 origin/子协议、消息/帧/状态校验、独占会话与异常释放 | T026 |
+| `src/server/routes/readiness.ts` | 实现 probe/config/draining readiness 契约 | T027 |
+| `src/server/main.ts` | 组装同源 static Web app、真实 Azure adapter、WebSocket、readiness、candidate identity 与 SIGTERM drain | T028 |
+| `package.json` | 使 developer test 命令实际启用全部先行 unit/contract assertions，避免生产模块存在时仍被跳过 | T017～T028 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/tasks-implementation.md` | 仅将已有 `T017`～`T028` checkbox 更新为完成 | T017～T028 |
+| `.ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/reports/implementation.md` | 追加本 Session Coding 证据 | T017～T028 |
+
+### 需求与场景覆盖
+
+| Intent / Specification Scenario | 实现路径 | 测试路径 | 结果 |
+|---|---|---|---|
+| FR-003 / AC-002 | `src/client/audio/`、`src/client/protocol/`、`src/client/App.tsx` | `tests/unit/audio-capture.test.ts`、`tests/unit/client-session.test.ts`、`tests/unit/subtitle-reducer.test.ts` | 9 项 focused assertions 通过 |
+| FR-001～FR-004 / AC-001～AC-004 | `src/server/adapters/`、`src/server/session/`、`src/server/routes/`、`src/server/main.ts` | `tests/contract/`、`tests/unit/session-orchestrator.test.ts`、`tests/unit/server-gateway.test.ts`、`tests/unit/config-and-logging.test.ts` | developer suite 共 61 项 assertions 通过；fake 仅证明本地 contract |
+| IQA-001～IQA-003 | 完整应用入口已组装 | `tests/integration/azure-translation.integration.test.ts`、`tests/e2e/iqa-001-streaming-subtitles.spec.ts`～`iqa-003-unrecognized-recovery.spec.ts` | 测试可发现并编译；缺少批准 Azure identity 与部署 URL，3 项 integration 和 3 项 Playwright 场景明确 skip，未声称通过 |
+
+### 执行命令与结果
+
+| 命令 | 环境 | 结果 | 证据 |
+|---|---|---|---|
+| `rm -rf node_modules && npm exec --yes --package=node@24 -- node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci` | Node.js 24、clean `node_modules` | 通过 | 安装 186 packages；audit 187 packages，0 vulnerabilities |
+| `npm ... run format:check` | Node.js 24 | 通过 | `git diff --check` 退出码 0 |
+| `npm ... run static:check` | Node.js 24 | 通过 | TypeScript static analysis 退出码 0 |
+| `npm ... run build` | Node.js 24 | 通过 | Vite 转换 85 modules 并生成 production client；server TypeScript build 退出码 0 |
+| `npm ... run test:developer` | Node.js 24 | 通过 | 12 files、61 tests 全部通过，无 skip |
+| `npm ... run test:integration` | Node.js 24、无 Azure identity/credential | 通过（环境边界） | 1 file、3 tests 明确 skipped；未声称真实 Azure integration 通过 |
+| `npm ... run test:functional` | Node.js 24、无部署 URL/candidate identity | 通过（环境边界） | Playwright 发现 3 项 IQA 场景并明确 skipped；未声称用户流程通过 |
+| `npm ... audit --audit-level=high` | Node.js 24 | 通过 | `found 0 vulnerabilities` |
+| immutable base `731eaeb1d0dd3ecf37c9a5b86e0adcde756ac6cc` path/workflow/secret 检查 | Coding workspace | 通过 | 最终 diff 仅含批准 manifest 路径；`.github/workflows/` 无变更；定向 secret pattern 扫描无结果 |
+
+### Runtime 与下游门禁就绪制品
+
+完整应用现已提供真实 Azure Speech/Foundry 调用入口、`/health/ready`、`/candidate-identity`、`/ws/translation`、生产 client/server build 以及可执行的 integration/Playwright 测试入口。`Dockerfile`、active Feature 的 `runtime/deployment.json` 和 developer functional test script 属于下一 dependency-ready Phase 4，本 Session 未提前创建。
+
+### 延后平台证据
+
+- 真实 Azure continuous LID、两种可识别语言、不可识别后恢复、`gpt-sol-6.1` 与 `reasoning.effort="none"` provider 结果等待批准 integration identity、endpoint 和配置。
+- Playwright `IQA-001`～`IQA-003` 的真实字幕及受控 trace/video/screenshot 等待部署后的同一不可变 Candidate URL、Delivery ID 和 Candidate SHA。
+- container build、candidate image/SHA/digest、远程部署、Independent QA、UAT、发布审批、Review 与 Merge 均属于 Phase 4 或后续平台阶段，本 Session 未制造对应结果。
+
+### 限制、剩余风险与阻塞项
+
+- 本地 unit/contract tests 覆盖确定性 adapter 与生命周期边界，但不证明 Azure provider 接受 managed identity、continuous-LID 配置或 Responses preview contract；真实结果按批准环境责任延后。
+- Coding workspace 没有 Azure credential、deployed URL、外部 identity 或 approved remote target；integration 与 Playwright 的 skip 是环境边界证据，不是功能通过证据。
+- Phase 4 `T029`～`T033` 尚未实施；production container、部署契约、developer functional script、本地 container 验证和最终候选检查仍待后续 bounded Coding Session。
+- 未发现阻塞下一批 Coding 的新增问题。
+
+### 实施结论
+
+完成本批次 `T017`～`T028` 的生产实现、focused developer tests、static analysis、production build 和本地可执行边界验证；真实 Azure integration 与 IQA 场景保持为延后平台证据。本结论不表示 Phase 4、远程验收或整个 Delivery 已完成。
