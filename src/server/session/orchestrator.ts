@@ -153,16 +153,19 @@ export function createRecoveringSpeechConnection(options: {
   return {
     async start() {
       if (stopped) return;
-      const created = await options.createRecognizer();
-      if (stopped) {
-        await dispose(created);
-        return;
-      }
+      let created: Recognizer | undefined;
       try {
+        created = await options.createRecognizer();
+        if (stopped) {
+          await dispose(created);
+          return;
+        }
         await created.start();
         recognizer = created;
       } catch (error) {
+        stopped = true;
         await dispose(created);
+        options.close(1011);
         throw error;
       }
     },
