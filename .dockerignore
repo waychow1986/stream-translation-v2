@@ -1,0 +1,16 @@
+.git/
+.ai-delivery/
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+.env*
+!.env.example
+
+*.log
+*.tmp
+*.temp
+tmp/
+tests/fixtures/audio/tmp/
