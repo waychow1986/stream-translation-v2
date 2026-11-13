@@ -1,6 +1,6 @@
 {
   "sourceArtifacts": {
-    "reports/convergence.md": "HASH_PENDING"
+    "reports/convergence.md": "bbcec00e164ba6094122f05d13eb45c2797f45c9324ce045f1bf8e55de7257e4"
   },
   "passed": false,
   "blockers": [
@@ -8,14 +8,14 @@
       "category": "contradicts",
       "artifact": "spec.md",
       "path": "src/client/audio/capture.ts",
-      "description": "浏览器生产采集路径未跨 AudioWorklet 小回调累计 PCM，正常音频会在形成 3,200-byte 帧前被丢弃。",
+      "description": "\u6D4F\u89C8\u5668\u751F\u4EA7\u91C7\u96C6\u8DEF\u5F84\u672A\u8DE8 AudioWorklet \u5C0F\u56DE\u8C03\u7D2F\u8BA1 PCM\uFF0C\u6B63\u5E38\u97F3\u9891\u4F1A\u5728\u5F62\u6210 3,200-byte \u5E27\u524D\u88AB\u4E22\u5F03\u3002",
       "route": "coding-repair"
     },
     {
       "category": "partial",
       "artifact": "design.md",
       "path": "src/server/session/orchestrator.ts",
-      "description": "Speech recognizer 首次创建或启动失败未执行批准的 1011 关闭与完整资源清理。",
+      "description": "Speech recognizer \u9996\u6B21\u521B\u5EFA\u6216\u542F\u52A8\u5931\u8D25\u672A\u6267\u884C\u6279\u51C6\u7684 1011 \u5173\u95ED\u4E0E\u5B8C\u6574\u8D44\u6E90\u6E05\u7406\u3002",
       "route": "coding-repair"
     }
   ]
