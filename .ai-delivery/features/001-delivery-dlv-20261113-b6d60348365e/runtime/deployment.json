@@ -1,0 +1,30 @@
+{
+  "containerPort": 8080,
+  "healthPath": "/health/ready",
+  "candidateIdentityPath": "/candidate-identity",
+  "migrationCommand": [],
+  "developerSetupCommands": [
+    "npm ci"
+  ],
+  "developerValidationCommands": {
+    "staticAnalysis": [
+      "npm run format:check",
+      "npm run static:check"
+    ],
+    "build": [
+      "npm run build",
+      "docker build --tag stream-translation-v2:developer ."
+    ],
+    "developerTests": [
+      "npm run test:developer"
+    ],
+    "integrationTests": [
+      "npm run test:integration"
+    ],
+    "functionalTests": [
+      "npm run test:functional"
+    ]
+  },
+  "developerFunctionalTestScript": ".ai-delivery/features/001-delivery-dlv-20261113-b6d60348365e/runtime/developer-functional-run.sh",
+  "requiresPrivateNetwork": false
+}
