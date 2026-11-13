@@ -21,8 +21,8 @@
 
 ## Phase 2：Foundational
 
-- [ ] T003 编写 `translation.v1` WebSocket discriminated union、JSON schema validation、binary PCM 帧、UUID/sequence/revision、未知字段、事件终态和 close code 的 contract tests；以测试先因协议实现缺失而失败、并覆盖全部 client/server event 作为完成证据（`tests/contract/protocol.contract.test.ts`；来源：design“Browser—server WebSocket”“HTTP 与 schema”；依赖：T001）
-- [ ] T004 实现前后端共享的 `translation.v1` 类型、运行时 schema validator、稳定错误枚举和协议常量，使 `T003` 通过（`src/shared/protocol.ts`；来源：design“Browser—server WebSocket”“HTTP 与 schema”；依赖：T003）
+- [x] T003 编写 `translation.v1` WebSocket discriminated union、JSON schema validation、binary PCM 帧、UUID/sequence/revision、未知字段、事件终态和 close code 的 contract tests；以测试先因协议实现缺失而失败、并覆盖全部 client/server event 作为完成证据（`tests/contract/protocol.contract.test.ts`；来源：design“Browser—server WebSocket”“HTTP 与 schema”；依赖：T001）
+- [x] T004 实现前后端共享的 `translation.v1` 类型、运行时 schema validator、稳定错误枚举和协议常量，使 `T003` 通过（`src/shared/protocol.ts`；来源：design“Browser—server WebSocket”“HTTP 与 schema”；依赖：T003）
 
 ## Phase 3：US1 - 通过流式中文字幕理解会议发言
 

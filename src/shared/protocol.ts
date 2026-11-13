@@ -230,7 +230,15 @@ export function validateClientControlEvent(
 }
 
 export function validateServerEvent(value: unknown): value is ServerEvent {
-  return serverEventValidator(value);
+  if (!serverEventValidator(value)) {
+    return false;
+  }
+
+  if ("segmentId" in value) {
+    return value.segmentId === `${value.sessionId}:${value.sequence}`;
+  }
+
+  return true;
 }
 
 export function validateAudioFrame(value: unknown): boolean {

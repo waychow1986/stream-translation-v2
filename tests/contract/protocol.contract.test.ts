@@ -142,6 +142,13 @@ describe("translation.v1 protocol", () => {
       isFinal: false,
     },
     {
+      type: "segment.unrecognized",
+      protocolVersion: 1,
+      sessionId,
+      segmentId: `${sessionId}:2`,
+      sequence: 1,
+    },
+    {
       type: "subtitle.final",
       protocolVersion: 1,
       sessionId,
