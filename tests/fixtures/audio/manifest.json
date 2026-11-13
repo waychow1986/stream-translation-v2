@@ -7,6 +7,7 @@
       "purpose": "IQA-001 可识别英语固定合成发言",
       "locale": "en-US",
       "expectedText": "The meeting has started.",
+      "expectedSubtitleTerms": ["会议", "开始"],
       "scenarios": ["IQA-001"]
     },
     {
@@ -15,6 +16,7 @@
       "purpose": "IQA-002 可识别法语固定合成发言",
       "locale": "fr-FR",
       "expectedText": "La réunion a commencé.",
+      "expectedSubtitleTerms": ["会议", "开始"],
       "scenarios": ["IQA-002", "IQA-003"]
     },
     {

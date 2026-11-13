@@ -23,7 +23,8 @@ test("IQA-002 translates a second supported language without preset selection", 
   const subtitle = page.getByTestId("subtitle-segment").first();
   await expect(subtitle).toHaveAttribute("data-source-locale", "fr-FR");
   await expect(subtitle).toHaveAttribute("data-final", "true");
-  await expect(subtitle).not.toBeEmpty();
+  await expect(subtitle).toContainText("会议");
+  await expect(subtitle).toContainText("开始");
   await attachControlledEvidence(page, testInfo, {
     scenario: "IQA-002",
     fixtureIds: ["recognized-language-b"],

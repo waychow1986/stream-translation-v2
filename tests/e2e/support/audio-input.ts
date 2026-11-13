@@ -6,10 +6,25 @@ export async function installFixtureAudio(
   page: Page,
   fixture: "recognized-language-a.wav" | "recognized-language-b.wav" | "unrecognized.wav",
 ): Promise<void> {
-  const bytes = await readFile(
-    new URL(`../../fixtures/audio/${fixture}`, import.meta.url),
+  await installFixtureAudioSequence(page, [fixture]);
+}
+
+export async function installFixtureAudioSequence(
+  page: Page,
+  fixtures: Array<
+    "recognized-language-a.wav" | "recognized-language-b.wav" | "unrecognized.wav"
+  >,
+): Promise<void> {
+  const encodedAudio = await Promise.all(
+    fixtures.map(async (fixture) =>
+      (
+        await readFile(
+          new URL(`../../fixtures/audio/${fixture}`, import.meta.url),
+        )
+      ).toString("base64"),
+    ),
   );
-  await page.addInitScript((encodedAudio) => {
+  await page.addInitScript((encodedFixtures) => {
     const original = navigator.mediaDevices.getUserMedia.bind(
       navigator.mediaDevices,
     );
@@ -17,20 +32,24 @@ export async function installFixtureAudio(
       if (!constraints?.audio) {
         return original(constraints);
       }
-      const binary = atob(encodedAudio);
-      const wav = Uint8Array.from(binary, (character) =>
-        character.charCodeAt(0),
-      );
       const context = new AudioContext();
-      const buffer = await context.decodeAudioData(wav.buffer);
-      const source = context.createBufferSource();
       const destination = context.createMediaStreamDestination();
-      source.buffer = buffer;
-      source.connect(destination);
-      source.start();
+      let startAt = context.currentTime;
+      for (const encodedAudio of encodedFixtures) {
+        const binary = atob(encodedAudio);
+        const wav = Uint8Array.from(binary, (character) =>
+          character.charCodeAt(0),
+        );
+        const buffer = await context.decodeAudioData(wav.buffer);
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(destination);
+        source.start(startAt);
+        startAt += buffer.duration;
+      }
       return destination.stream;
     };
-  }, bytes.toString("base64"));
+  }, encodedAudio);
 }
 
 export async function candidateIdentity(page: Page): Promise<{
