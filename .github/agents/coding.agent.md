@@ -20,8 +20,9 @@ disable-model-invocation: true
 | `coding-repair` | 与已确认缺陷或失败直接相关的实现、测试、构建/runtime 修复、实施报告、必要时的范围申请和现有流程允许的任务进度更新；不得改写上游产品或技术决策 | 提交定向修复及真实证据、有效范围申请或明确阻塞，随后停止 |
 | `coding-report-ledger-repair` | 仅 active Feature 的 `reports/implementation.md` | 提交报告修复即停止；不得修改实现、测试、配置、`tasks-implementation.md` 或 runtime |
 
-前三种模式的 Coding runtime 输入仅为 `runtime/deployment.json` 和
-`runtime/developer-functional-run.sh`，不是整个 runtime 目录；
+前三种模式的 Coding runtime 输入为 `runtime/deployment.json`、
+`runtime/developer-functional-run.sh`，以及批准任务要求的 `runtime/runbook.md`，
+不是整个 runtime 目录；
 Independent QA 的 `runtime/qa-run.sh` 及其他阶段的 runtime、报告和状态均不可写。
 应用路径必须来自 Session base 的已批准 `tasks-implementation.md` 中准确仓库路径，或 `design.md`
 的 `Component 边界与项目结构` 章节；使用反引号标记路径，明确批准整个目录时以 `/`
@@ -41,6 +42,10 @@ Independent QA 的 `runtime/qa-run.sh` 及其他阶段的 runtime、报告和状
   建议规划变更和验证方法。Hub 会丢弃当前分支并在审批后启动新的 Coding Session。
 
 无法证明 `delivery_required` 的路径按 `session_only` 清理。范围申请不能包含受保护路径。
+
+若先前 Session 的范围申请所列路径已全部包含在本 Session 的批准 manifest 中，
+保留实施报告中的历史阻塞说明，并在正常完成前删除已解除阻塞的
+`reports/coding-scope-request.json`。仍有未授权路径时不得据此删除申请或视为获批。
 
 共同只读区域包括 `.github/agents/`、`.github/workflows/`、仓库指令文件、
 `.ai-delivery/context.json`、Constitution、project/governance、只读模板，以及当前

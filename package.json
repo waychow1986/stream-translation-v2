@@ -1,0 +1,49 @@
+{
+  "name": "stream-translation-v2",
+  "version": "1.0.0",
+  "description": "会议实时流式中文字幕 Web 应用",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format:check": "git diff --check",
+    "static:check": "tsc -p tsconfig.json --noEmit",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "test": "npm run test:developer",
+    "test:developer": "AIDELIVERY_RUN_PENDING_TESTS=1 vitest run tests/unit tests/contract --passWithNoTests",
+    "test:integration": "vitest run tests/integration --passWithNoTests",
+    "test:functional": "playwright test --pass-with-no-tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/waychow1986/stream-translation-v2"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.14.1",
+    "@fastify/static": "^10.1.10",
+    "@fastify/websocket": "^11.3.7",
+    "ajv": "^8.20.0",
+    "fastify": "^5.12.8",
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0",
+    "openai": "^7.56.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}
