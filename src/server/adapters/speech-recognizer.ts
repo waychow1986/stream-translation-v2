@@ -32,6 +32,71 @@ function validateLocales(locales: string[]) {
   }
 }
 
+export async function createProductionSpeechRecognizer(options: {
+    sdk: Record<string, unknown>;
+    speechConfig: { setProperty(property: unknown, value: string): void };
+    locales: string[];
+    callbacks: {
+      recognized(event: { text: string; locale: string }): void;
+      unrecognized(): void;
+      canceled(event: { transient: boolean }): void;
+    };
+  }) {
+    validateLocales(options.locales);
+    const sdk = options.sdk as typeof SpeechSDK;
+    options.speechConfig.setProperty(
+      sdk.PropertyId.SpeechServiceConnection_LanguageIdMode,
+      "Continuous",
+    );
+    const autoDetect =
+      sdk.AutoDetectSourceLanguageConfig.fromLanguages(options.locales);
+    const format = sdk.AudioStreamFormat.getWaveFormatPCM(16_000, 16, 1);
+    const stream = sdk.AudioInputStream.createPushStream(format);
+    const recognizer = sdk.SpeechRecognizer.FromConfig(
+      options.speechConfig as SpeechSDK.SpeechConfig,
+      autoDetect,
+      sdk.AudioConfig.fromStreamInput(stream),
+    );
+    let disposed = false;
+    recognizer.recognized = (_sender, event) => {
+      const text = event.result.text?.trim();
+      const locale =
+        sdk.AutoDetectSourceLanguageResult.fromResult(event.result).language;
+      if (!text || !locale || locale === "Unknown") {
+        options.callbacks.unrecognized();
+        return;
+      }
+      options.callbacks.recognized({ text, locale });
+    };
+    recognizer.canceled = (_sender, event) => {
+      const transient =
+        event.reason === sdk.CancellationReason.Error &&
+        (event.errorCode === sdk.CancellationErrorCode.ConnectionFailure ||
+          event.errorCode === sdk.CancellationErrorCode.ServiceTimeout);
+      options.callbacks.canceled({ transient });
+    };
+    recognizer.sessionStopped = () => undefined;
+    return {
+      async start() {
+        await new Promise<void>((resolve, reject) =>
+          recognizer.startContinuousRecognitionAsync(resolve, reject),
+        );
+      },
+      write(frame: Uint8Array) {
+        if (!disposed) stream.write(frame.slice().buffer as ArrayBuffer);
+      },
+      async dispose() {
+        if (disposed) return;
+        disposed = true;
+        await new Promise<void>((resolve) =>
+          recognizer.stopContinuousRecognitionAsync(resolve, () => resolve()),
+        );
+        recognizer.close();
+        stream.close();
+      },
+    };
+}
+
 export function createSpeechRecognizer(options: {
   locales: string[];
   sdk: Record<string, unknown>;

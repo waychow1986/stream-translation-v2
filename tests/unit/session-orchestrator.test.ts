@@ -7,6 +7,7 @@ type OrchestratorModule = {
   createSessionOrchestrator(options: {
     translate(text: string, signal: AbortSignal): AsyncIterable<string>;
     send(event: Record<string, unknown>): void;
+    close?(code: number): void;
   }): {
     recognized(event: {
       text: string;
@@ -135,9 +136,7 @@ describe.runIf(runPending)("translation session orchestrator", () => {
     expect(maxActive).toBe(1);
     expect(releases).toHaveLength(1);
     releases.shift()?.();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(releases).toHaveLength(1);
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
     releases.shift()?.();
     await Promise.all([first, second]);
 

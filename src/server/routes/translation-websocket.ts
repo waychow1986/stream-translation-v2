@@ -51,7 +51,10 @@ export function registerTranslationWebsocket(
   options: {
     expectedOrigin: string;
     isDraining(): boolean;
-    createSession(send: (event: unknown) => void): {
+    createSession(
+      send: (event: unknown) => void,
+      close: (code: number) => void,
+    ): {
       start(): Promise<{ sessionId: string }>;
       write(frame: Uint8Array): void;
       stop(): Promise<void>;
@@ -75,8 +78,9 @@ export function registerTranslationWebsocket(
       }
       let state: "connecting" | "listening" | "draining" | "closed" =
         "connecting";
-      const session = options.createSession((event) =>
-        socket.send(JSON.stringify(event)),
+      const session = options.createSession(
+        (event) => socket.send(JSON.stringify(event)),
+        (code) => socket.close(code),
       );
       socket.on("message", async (raw: Buffer, binary: boolean) => {
         const data = binary
