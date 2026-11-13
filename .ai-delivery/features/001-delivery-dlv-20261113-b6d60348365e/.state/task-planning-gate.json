@@ -1,0 +1,72 @@
+{
+  "stage": "task-planning",
+  "passed": false,
+  "findings": [
+    {
+      "id": "TPL-SELF-001",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "Setup 未覆盖批准技术栈的必要依赖",
+      "recommendation": "在负责 npm 工程和锁文件的任务中明确纳入全部批准 runtime 依赖及其锁定证据，避免后续任务隐式修改仓库控制文件。",
+      "route": "current_stage",
+      "reasonType": "incomplete"
+    },
+    {
+      "id": "TPL-SELF-002",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "启动 contract probe 缺少测试先行任务",
+      "recommendation": "在启动探针实现之前增加或扩充明确的先失败测试，覆盖固定输入、全部 contract 条件和不 ready 结果。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TPL-SELF-003",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "Speech 连接级恢复义务未形成可执行任务",
+      "recommendation": "增加连接级 SDK 取消后单次重建 recognizer、重建失败关闭及资源释放的先失败测试和实现任务。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TPL-SELF-004",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "资源上限变更所需长会话验证缺失",
+      "recommendation": "在 orchestrator 实现之前加入可重复的长会话资源与顺序验证任务，明确路径、边界断言和完成证据。",
+      "route": "current_stage",
+      "reasonType": "coverage"
+    },
+    {
+      "id": "TPL-SELF-005",
+      "severity": "high",
+      "scope": "self",
+      "artifact": "tasks-implementation.md",
+      "owner": "task-planning",
+      "summary": "Phase 4 依赖不能保证最终检查覆盖 runbook",
+      "recommendation": "修正 Phase 4 的直接依赖和并行标记，使最终检查等待 runbook 及全部候选制品完成。",
+      "route": "current_stage",
+      "reasonType": "contradiction"
+    },
+    {
+      "id": "TPL-PRED-001",
+      "severity": "high",
+      "scope": "predecessor",
+      "artifact": "design.md",
+      "owner": "technical-solution",
+      "summary": "Design 的字幕验收证据规则相互矛盾",
+      "recommendation": "明确区分禁止记录的真实会议内容与使用获准非敏感固定样本生成的受控验收 artifact，并统一安全处理和证据保留规则。",
+      "route": "upstream_exception",
+      "reasonType": "contradiction"
+    }
+  ]
+}
